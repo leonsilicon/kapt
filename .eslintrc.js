@@ -14,5 +14,6 @@ module.exports = {
     'import/no-extraneous-dependencies': 'off',
     'prefer-destructuring': 'off',
     '@typescript-eslint/no-non-null-assertion': 'off',
+    '@typescript-eslint/no-explicit-any': 'off',
   },
 };

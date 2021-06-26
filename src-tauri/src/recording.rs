@@ -120,74 +120,71 @@ pub fn start_recording_chunk(state_lock: &'static RwLock<KaptState>, recording_i
     });
   };
 
-  {
-    let recording_session_id = recording_session_id.clone();
-    // Spawn a recording chunk for right now
-    tauri::async_runtime::spawn(async move {
-      let mut video_start_time: Option<u128> = None;
-      let mut audio_start_time: Option<u128> = None;
+  // Spawn a recording chunk for right now
+  tauri::async_runtime::spawn(async move {
+    let mut video_start_time: Option<u128> = None;
+    let mut audio_start_time: Option<u128> = None;
 
-      let parse_start_time = |line: String| {
-        use regex::Regex;
-        lazy_static! {
-          static ref START_TIME_RE: Regex =
-            Regex::new(r#"start: (\d+)\."#).expect("Failed to compile regex");
-        };
-
-        if let Some(cap) = START_TIME_RE.captures(&line) {
-          if let Some(m) = cap.get(1) {
-            let unix_timestamp = m
-              .as_str()
-              .to_string()
-              .parse::<u128>()
-              .expect("Failed to parse integer");
-
-            return Some(unix_timestamp);
-          }
-        }
-
-        None
+    let parse_start_time = |line: String| {
+      use regex::Regex;
+      lazy_static! {
+        static ref START_TIME_RE: Regex =
+          Regex::new(r#"start: (\d+)\."#).expect("Failed to compile regex");
       };
 
-      while let Some(event) = video_rx.recv().await {
-        println!("{:?}", event);
-        // Ffmpeg logs to stderr
-        if let CommandEvent::Stderr(line) = event {
-          if let Some(unix_timestamp) = parse_start_time(line) {
-            video_start_time = Some(unix_timestamp);
-          }
+      if let Some(cap) = START_TIME_RE.captures(&line) {
+        if let Some(m) = cap.get(1) {
+          let unix_timestamp = m
+            .as_str()
+            .to_string()
+            .parse::<u128>()
+            .expect("Failed to parse integer");
+
+          return Some(unix_timestamp);
         }
       }
 
-      while let Some(event) = audio_rx.recv().await {
-        // Ffmpeg logs to stderr
-        println!("{:?}", event);
-        if let CommandEvent::Stderr(line) = event {
-          if let Some(unix_timestamp) = parse_start_time(line) {
-            audio_start_time = Some(unix_timestamp);
-          }
+      None
+    };
+
+    while let Some(event) = video_rx.recv().await {
+      println!("{:?}", event);
+      // Ffmpeg logs to stderr
+      if let CommandEvent::Stderr(line) = event {
+        if let Some(unix_timestamp) = parse_start_time(line) {
+          video_start_time = Some(unix_timestamp);
         }
       }
+    }
 
-      // Ffmpeg process ended
-      let early_end_time = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .expect("Time went backwards")
-        .as_millis();
+    while let Some(event) = audio_rx.recv().await {
+      // Ffmpeg logs to stderr
+      println!("{:?}", event);
+      if let CommandEvent::Stderr(line) = event {
+        if let Some(unix_timestamp) = parse_start_time(line) {
+          audio_start_time = Some(unix_timestamp);
+        }
+      }
+    }
 
-      let mut state = state_lock
-        .write()
-        .expect("Failed to acquire state read lock");
+    // Ffmpeg process ended
+    let early_end_time = SystemTime::now()
+      .duration_since(UNIX_EPOCH)
+      .expect("Time went backwards")
+      .as_millis();
 
-      state.recordings.push(FfmpegRecording {
-        audio_path,
-        audio_start_time: audio_start_time.expect("Audio start time not found."),
-        video_path,
-        video_start_time: video_start_time.expect("Video start not not found."),
-        early_end_time,
-      });
+    let mut state = state_lock
+      .write()
+      .expect("Failed to acquire state read lock");
+
+    state.recordings.push(FfmpegRecording {
+      audio_path,
+      audio_start_time: audio_start_time.expect("Audio start time not found."),
+      video_path,
+      video_start_time: video_start_time.expect("Video start not not found."),
+      early_end_time,
     });
-  }
+  });
 
   use tokio::time::{sleep, Duration};
   // Spawn a recording chunk for 5 seconds in the future

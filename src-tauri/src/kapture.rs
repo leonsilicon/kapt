@@ -61,11 +61,11 @@ pub fn process_kapture(state_lock: &'static RwLock<KaptState>, timestamp: u128) 
   // Returns the start clip for a 15-second video and the offset of the clip to make
   // the video 15 seconds
   let get_video_chunks = |end_index| {
-    let video_chunks: Vec<VideoChunk> = vec![];
-    let total_time_ms: u128 = 0;
+    let mut video_chunks: Vec<VideoChunk> = vec![];
+    let mut total_time_ms: u128 = 0;
 
     for cur_index in (0..end_index - 1).rev() {
-      let cur_recording = state.recordings[cur_index];
+      let cur_recording = &state.recordings[cur_index];
       // If it's a main recording, time is E_i - S_i
       if cur_index % 2 == 0 {
         let audio_clip_time = cur_recording.early_end_time - cur_recording.audio_start_time;
@@ -81,14 +81,14 @@ pub fn process_kapture(state_lock: &'static RwLock<KaptState>, timestamp: u128) 
       }
       // If it's a secondary recording, time is S_(i+1) - E_(i-1)
       else {
-        let prev_recording = state.recordings[cur_index - 1];
+        let prev_recording = &state.recordings[cur_index - 1];
         let (audio_clip_time, video_clip_time) = if cur_index == end_index {
           (
             timestamp - prev_recording.early_end_time,
             timestamp - prev_recording.early_end_time,
           )
         } else {
-          let next_recording = state.recordings[cur_index + 1];
+          let next_recording = &state.recordings[cur_index + 1];
           (
             next_recording.audio_start_time - prev_recording.early_end_time,
             next_recording.video_start_time - prev_recording.early_end_time,
@@ -123,7 +123,7 @@ pub fn process_kapture(state_lock: &'static RwLock<KaptState>, timestamp: u128) 
   let concat_recordings = |recording_index| {
     let video_chunks = get_video_chunks(recording_index);
 
-    let temp_video_paths: Vec<String> = vec![];
+    let mut temp_video_paths: Vec<String> = vec![];
     for video_chunk in video_chunks {
       let VideoChunk {
         audio_offset,
@@ -138,16 +138,18 @@ pub fn process_kapture(state_lock: &'static RwLock<KaptState>, timestamp: u128) 
         .to_string_lossy()
         .to_string();
 
-      let clip = state.recordings[clip_index];
+      let clip = &state.recordings[clip_index];
       // Combining the audio and video of the clip and making a temporary clip
-      let command = Command::new("ffmpeg")
+      let mut command = Command::new("ffmpeg");
+
+      command
         .args(&["-ss", &offset_to_string(video_offset)])
         .args(&["-t", &time_to_string(video_time)])
         .args(&["-i", &clip.video_path])
         .args(&["-ss", &offset_to_string(audio_offset)])
         .args(&["-t", &time_to_string(audio_time)])
         .args(&["-i", &clip.audio_path])
-        .args(&[clip.video_path])
+        .args(&[&clip.video_path])
         .args(&["-map", "0:v:0", "-map", "1:a:0"])
         .args(&["-y"])
         .args(&[&temp_video_path]);
@@ -155,12 +157,13 @@ pub fn process_kapture(state_lock: &'static RwLock<KaptState>, timestamp: u128) 
       command
         .spawn()
         .expect("Failed to run ffmpeg command")
-        .wait();
+        .wait()
+        .expect("Failed to wait for ffmpeg");
 
       temp_video_paths.push(temp_video_path);
     }
 
-    let video_path_list = String::new();
+    let mut video_path_list = String::new();
     for temp_video_path in temp_video_paths {
       video_path_list.push_str(&format!("file '{}'\n", temp_video_path));
     }
@@ -168,19 +171,22 @@ pub fn process_kapture(state_lock: &'static RwLock<KaptState>, timestamp: u128) 
     let temp_video_list_path = create_temp_path(&format!("{}.txt", nanoid!()));
     let final_video_path = create_temp_path(&format!("{}.mp4", nanoid!()));
 
-    fs::write(temp_video_list_path, video_path_list).expect("Failed to write video list file");
+    fs::write(&temp_video_list_path, video_path_list).expect("Failed to write video list file");
 
-    let command = Command::new("ffmpeg")
+    let mut command = Command::new("ffmpeg");
+
+    command
       .args(&["-f", "concat"])
       .args(&["-safe", "0"])
       .args(&["-i", &temp_video_list_path])
       .args(&["-c", "copy"])
-      .args(&[final_video_path]);
+      .args(&[&final_video_path]);
 
     command
       .spawn()
       .expect("Failed to spawn video concat command")
-      .wait();
+      .wait()
+      .expect("failed to wait for concat");
 
     final_video_path
   };
@@ -189,7 +195,7 @@ pub fn process_kapture(state_lock: &'static RwLock<KaptState>, timestamp: u128) 
     // First case
     concat_recordings(i)
   } else {
-    let recent_even_recording = state.recordings[i - 1];
+    let recent_even_recording = &state.recordings[i - 1];
     // If timestamp is after the end time of the main recording, need to use it
     if timestamp > recent_even_recording.early_end_time {
       concat_recordings(i)
@@ -199,14 +205,9 @@ pub fn process_kapture(state_lock: &'static RwLock<KaptState>, timestamp: u128) 
   }
 }
 
-#[tauri::command]
 // timestamp - Unix timestamp of when the user pressed the Kapture button (in seconds)
-pub fn create_kapture(
-  window: tauri::Window,
-  state_lock: tauri::State<&'static RwLock<KaptState>>,
-  timestamp: u128,
-) -> String {
-  let kapture_path = process_kapture(*state_lock, timestamp);
+pub fn create_kapture(state_lock: &'static RwLock<KaptState>, timestamp: u128) -> String {
+  let kapture_path = process_kapture(state_lock, timestamp);
 
   kapture_path
 }

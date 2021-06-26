@@ -1,7 +1,5 @@
 use tauri::api::process::CommandChild;
 
-use std::collections::HashMap;
-
 pub struct KaptState {
   pub active_recordings: [Option<FfmpegActiveRecording>; 2],
 
@@ -16,6 +14,14 @@ pub struct KaptState {
 impl KaptState {
   pub fn is_recording(&self) -> bool {
     self.active_recordings[0].is_some() || self.active_recordings[1].is_some()
+  }
+
+  pub fn new() -> Self {
+    Self {
+      active_recordings: [None, None],
+      recording_session_id: None,
+      recordings: vec![],
+    }
   }
 }
 

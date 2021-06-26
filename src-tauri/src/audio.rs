@@ -7,7 +7,6 @@ pub struct AudioSource {
 }
 
 use std::process::{Command, Stdio};
-#[tauri::command]
 pub fn get_audio_sources() -> Vec<AudioSource> {
   let sources_descriptions: Vec<String> = {
     let list_sources_child = Command::new("pactl")

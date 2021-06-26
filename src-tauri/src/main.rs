@@ -9,8 +9,17 @@ use tauri::api::process::{Command, CommandChild, CommandEvent};
 
 struct KaptState {
   pub is_recording: bool,
-  pub recording_child: Option<CommandChild>,
+  pub active_recordings: [Option<FfmpegActiveRecording>; 2],
 }
+
+struct FfmpegActiveRecording {
+  pub id: String,
+  pub command_child: CommandChild,
+}
+
+use nanoid::nanoid;
+use std::env;
+use std::path::Path;
 
 #[tauri::command]
 fn start_recording(
@@ -34,13 +43,19 @@ fn start_recording(
   command = command.args(&["-framerate", "25"]);
   command = command.args(&["-f", "x11grab"]);
   command = command.args(&["-i", ":0.0+100,200"]);
-  command = command.args(&["/home/leonzalion/output.mp4"]);
 
-  let (mut rx, recording_child) = command.spawn().expect("Failed to spawn ffmpeg");
+  let path = Path::new(&env::temp_dir()).join(format!("{}.mp4", nanoid!()));
+
+  command = command.args(&[path.to_string_lossy()]);
+
+  let (mut rx, command_child) = command.spawn().expect("Failed to spawn ffmpeg");
 
   println!("Ffmpeg process spawned...");
 
-  state.recording_child = Some(recording_child);
+  state.active_recordings[0] = Some(FfmpegActiveRecording {
+    command_child,
+    id: nanoid!(),
+  });
 
   tauri::async_runtime::spawn(async move {
     // read events such as stdout
@@ -69,12 +84,13 @@ fn stop_recording(state: tauri::State<RwLock<KaptState>>) {
 
   println!("Stopping the recording...");
 
-  let recording_child = Option::take(&mut state.recording_child);
+  let recording_child = Option::take(&mut state.active_recordings[0]);
 
   recording_child
     .unwrap()
+    .command_child
     .write(&[b'q'])
-    .expect("Failed to kill ffmpeg process");
+    .expect("Failed to stop ffmpeg process");
 
   state.is_recording = false;
 }
@@ -82,7 +98,7 @@ fn stop_recording(state: tauri::State<RwLock<KaptState>>) {
 fn main() {
   let kapt_state = KaptState {
     is_recording: false,
-    recording_child: None,
+    active_recordings: [None, None],
   };
 
   tauri::Builder::default()

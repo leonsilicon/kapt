@@ -104,8 +104,8 @@ pub async fn process_kapture(state_lock: &'static RwLock<KaptState>, timestamp: 
         total_time_ms += audio_clip_time;
         video_chunks.push(VideoChunk {
           clip_index: cur_index,
-          video_offset: prev_recording.early_end_time,
-          audio_offset: prev_recording.early_end_time,
+          video_offset: prev_recording.early_end_time - cur_recording.video_start_time,
+          audio_offset: prev_recording.early_end_time - cur_recording.audio_start_time,
           audio_time: audio_clip_time,
           video_time: video_clip_time,
         })
@@ -118,11 +118,13 @@ pub async fn process_kapture(state_lock: &'static RwLock<KaptState>, timestamp: 
         video_chunks[n - 1].audio_offset += total_time_ms - 15 * 1000;
         video_chunks[n - 1].video_offset += total_time_ms - 15 * 1000;
 
+				video_chunks.reverse();
         return video_chunks;
       }
     }
 
     // The clips combined don't exceed 15 seconds
+		video_chunks.reverse();
     video_chunks
   };
 
@@ -157,7 +159,6 @@ pub async fn process_kapture(state_lock: &'static RwLock<KaptState>, timestamp: 
         .args(&["-ss", &offset_to_string(audio_offset)])
         .args(&["-t", &time_to_string(audio_time)])
         .args(&["-i", &clip.audio_path])
-        .args(&[&clip.video_path])
         .args(&["-map", "0:v:0", "-map", "1:a:0"])
         .args(&["-y"])
         .args(&[&temp_video_path]);

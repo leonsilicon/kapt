@@ -39,22 +39,21 @@ pub async fn process_kapture(state_lock: &'static RwLock<KaptState>, timestamp: 
   // Stop the recording first
   recording::stop_recording(state_lock).await;
 
+  {
+    let mut state = state_lock
+      .write()
+      .expect("Failed to acquire state write lock");
+
+    // Sort the recordings by audio_start_time
+    state
+      .recordings
+      .sort_by(|r1, r2| r1.audio_start_time.cmp(&r2.audio_start_time));
+  }
+
   let state = state_lock
     .read()
     .expect("Failed to acquire state read lock");
-
-  // Get the most recent main recording in the array
-  let mut i = state.recordings.len() - 1;
-
-  println!(
-    "recording: {:?}; timestamp: {}",
-    state.recordings[i], timestamp
-  );
-
-  while state.recordings[i].audio_start_time > timestamp {
-    i -= 1;
-  }
-
+  #[derive(Debug)]
   struct VideoChunk {
     pub clip_index: usize,
     pub video_offset: u128,
@@ -66,10 +65,12 @@ pub async fn process_kapture(state_lock: &'static RwLock<KaptState>, timestamp: 
   // Returns the start clip for a 15-second video and the offset of the clip to make
   // the video 15 seconds
   let get_video_chunks = |end_index| {
+    println!("End index: {}", end_index);
+
     let mut video_chunks: Vec<VideoChunk> = vec![];
     let mut total_time_ms: u128 = 0;
 
-    for cur_index in (0..end_index - 1).rev() {
+    for cur_index in (0..end_index).rev() {
       let cur_recording = &state.recordings[cur_index];
       // If it's a main recording, time is E_i - S_i
       if cur_index % 2 == 0 {
@@ -121,12 +122,14 @@ pub async fn process_kapture(state_lock: &'static RwLock<KaptState>, timestamp: 
       }
     }
 
-    // If the clips combined don't exceed 15 seconds
-    return video_chunks;
+    // The clips combined don't exceed 15 seconds
+    video_chunks
   };
 
   let concat_recordings = |recording_index| {
+    println!("Recording index: {:?}", recording_index);
     let video_chunks = get_video_chunks(recording_index);
+    println!("Video chunks: {:?}", video_chunks);
 
     let mut temp_video_paths: Vec<String> = vec![];
     for video_chunk in video_chunks {
@@ -168,6 +171,8 @@ pub async fn process_kapture(state_lock: &'static RwLock<KaptState>, timestamp: 
       temp_video_paths.push(temp_video_path);
     }
 
+    println!("Video paths: {:?}", temp_video_paths);
+
     let mut video_path_list = String::new();
     for temp_video_path in temp_video_paths {
       video_path_list.push_str(&format!("file '{}'\n", temp_video_path));
@@ -198,15 +203,29 @@ pub async fn process_kapture(state_lock: &'static RwLock<KaptState>, timestamp: 
     final_video_path
   };
 
+  println!("Recordings: {:#?}", state.recordings);
+
+  // Get the most recent main recording in the array
+  let mut i = state.recordings.len() - 1;
+
+  while state.recordings[i].audio_start_time > timestamp {
+    i -= 1;
+  }
+
+  println!("i: {:?}, timestamp: {}", i, timestamp);
+
   if i % 2 == 0 {
     // First case
+    println!("First case");
     concat_recordings(i)
   } else {
     let recent_even_recording = &state.recordings[i - 1];
     // If timestamp is after the end time of the main recording, need to use it
     if timestamp > recent_even_recording.early_end_time {
+      println!("Second case");
       concat_recordings(i)
     } else {
+      println!("Third case");
       concat_recordings(i - 1)
     }
   }

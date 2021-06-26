@@ -1,5 +1,5 @@
-use tokio::sync::mpsc::Receiver;
 use std::sync::RwLock;
+use tokio::sync::mpsc::Receiver;
 
 use tauri::api::process::{CommandChild, CommandEvent};
 
@@ -134,7 +134,7 @@ impl FfmpegActiveRecording {
 }
 
 // A recording that has already ended
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct FfmpegRecording {
   pub video_path: String,
   pub video_start_time: u128,

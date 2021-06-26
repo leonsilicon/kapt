@@ -30,12 +30,36 @@ use nanoid::nanoid;
 use std::env;
 use std::path::Path;
 
+fn stop_recording_chunk(state_lock: &'static RwLock<KaptState>, recording_index: usize) {
+  let mut state = state_lock.write().expect("Failed to acquire write lock");
+
+  if let Some(mut recording_child) = Option::take(&mut state.active_recordings[recording_index]) {
+    recording_child
+      .command_child
+      .write(&[b'q'])
+      .expect("Failed to stop ffmpeg process");
+
+    println!("Recording 0 path: {}", recording_child.path);
+  }
+}
+
 fn start_recording_chunk(
   window: tauri::Window,
   state_lock: &'static RwLock<KaptState>,
   recording_index: usize,
 ) {
-  let mut state = state_lock.write().expect("Failed to acquire write lock");
+  let is_chunk_active = {
+    let state = state_lock
+      .read()
+      .expect("Failed to acquire state read lock");
+    state.active_recordings[recording_index].is_some()
+  };
+
+  if is_chunk_active {
+    stop_recording_chunk(state_lock, recording_index)
+  }
+
+  // If the current recording index is taken, stop it
 
   let mut command =
     Command::new_sidecar("ffmpeg").expect("failed to create `ffmpeg` binary command");
@@ -44,12 +68,6 @@ fn start_recording_chunk(
   command = command.args(&["-framerate", "25"]);
   command = command.args(&["-f", "x11grab"]);
   command = command.args(&["-i", ":0.0+100,200"]);
-
-  command = command.args(&["-f", "pulse"]);
-  command = command.args(&["-i", "default"]);
-  command = command.args(&["-preset", "ultrafast"]);
-  command = command.args(&["-crf", "18"]);
-  command = command.args(&["-pix_fmt", "yuv420p"]);
 
   let path = Path::new(&env::temp_dir())
     .join(format!("{}.mp4", nanoid!()))
@@ -62,6 +80,10 @@ fn start_recording_chunk(
   let (mut rx, command_child) = command.spawn().expect("Failed to spawn ffmpeg");
 
   println!("Ffmpeg process spawned...");
+
+  let mut state = state_lock
+    .write()
+    .expect("Failed to acquire state write lock");
   state.active_recordings[0] = Some(FfmpegActiveRecording {
     command_child,
     path,
@@ -83,8 +105,10 @@ fn start_recording_chunk(
     }
   });
 
+  use tokio::time::{sleep, Duration};
   // Spawn a recording chunk for 5 seconds in the future
   tauri::async_runtime::spawn(async move {
+    sleep(Duration::from_secs(5)).await;
     start_recording_chunk(window, state_lock, if recording_index == 0 { 1 } else { 0 });
   });
 }
@@ -117,33 +141,19 @@ fn start_recording(
 }
 
 #[tauri::command]
-fn stop_recording(state: tauri::State<RwLock<KaptState>>) {
-  let mut state = state.write().expect("Failed to acquire write lock");
+fn stop_recording(state_lock: tauri::State<&'static RwLock<KaptState>>) {
+  {
+    let state = state_lock.read().expect("Failed to acquire write lock");
 
-  if state.is_recording() {
-    println!("There is no recording in process.");
-    return;
+    if state.is_recording() {
+      println!("There is no recording in process.");
+      return;
+    }
   }
 
   println!("Stopping the recording...");
-
-  if let Some(mut recording_child) = Option::take(&mut state.active_recordings[0]) {
-    recording_child
-      .command_child
-      .write(&[b'q'])
-      .expect("Failed to stop ffmpeg process");
-
-    println!("Recording 0 path: {}", recording_child.path);
-  }
-
-  if let Some(mut recording_child) = Option::take(&mut state.active_recordings[1]) {
-    recording_child
-      .command_child
-      .write(&[b'q'])
-      .expect("Failed to stop ffmpeg process");
-
-    println!("Recording 1 path: {}", recording_child.path);
-  }
+  stop_recording_chunk(*state_lock, 0);
+  stop_recording_chunk(*state_lock, 1);
 }
 
 use lazy_static::lazy_static;

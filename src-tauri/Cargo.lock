@@ -39,6 +39,7 @@ dependencies = [
  "signal-hook",
  "tauri",
  "tauri-build",
+ "tokio",
 ]
 
 [[package]]

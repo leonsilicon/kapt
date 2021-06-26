@@ -48,15 +48,13 @@ use std::time::UNIX_EPOCH;
 impl FfmpegActiveRecording {
   // Wait until the commands
   pub async fn stop(&mut self, state_lock: &'static RwLock<KaptState>) {
-    self
-      .video_command_child
-      .write(&[b'q'])
-      .expect("Failed to stop ffmpeg video process");
+    if let Err(e) = self.video_command_child.write(&[b'q']) {
+      log::error!("Failed to stop ffmpeg video process: {}", e);
+    }
 
-    self
-      .audio_command_child
-      .write(&[b'q'])
-      .expect("Failed to stop ffmpeg audio process");
+    if let Err(e) = self.audio_command_child.write(&[b'q']) {
+      log::error!("Failed to stop ffmpeg audio process: {}", e)
+    }
 
     let mut video_start_time: Option<u128> = None;
     let mut audio_start_time: Option<u128> = None;

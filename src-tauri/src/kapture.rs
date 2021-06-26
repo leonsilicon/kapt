@@ -63,8 +63,8 @@ pub async fn process_kapture(state_lock: &'static RwLock<KaptState>, timestamp: 
     }
   }
 
-  let state = state_lock
-    .read()
+  let mut state = state_lock
+    .write()
     .expect("Failed to acquire state read lock");
   #[derive(Debug)]
   struct VideoChunk {
@@ -83,7 +83,7 @@ pub async fn process_kapture(state_lock: &'static RwLock<KaptState>, timestamp: 
     let mut video_chunks: Vec<VideoChunk> = vec![];
     let mut total_time_ms: u128 = 0;
 
-    for cur_index in (0..end_index).rev() {
+    for cur_index in (0..=end_index).rev() {
       let cur_recording = &state.recordings[cur_index];
       // If it's a main recording, time is E_i - S_i
       if cur_index % 2 == 0 {
@@ -251,10 +251,7 @@ pub async fn process_kapture(state_lock: &'static RwLock<KaptState>, timestamp: 
   };
 
   // Clear recordings now that we've processed it
-  {
-    let mut state = state_lock.write().expect("Failed to acquire write lock");
-    state.recordings = vec![];
-  }
+  state.recordings = vec![];
 
   video_path
 }

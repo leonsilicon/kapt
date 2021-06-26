@@ -86,42 +86,146 @@ pub async fn process_kapture(state_lock: &'static RwLock<KaptState>, timestamp: 
     for cur_index in (0..=end_index).rev() {
       let cur_recording = &state.recordings[cur_index];
       // If it's a main recording, time is E_i - S_i
+      let is_audio_early = cur_recording.audio_start_time < cur_recording.video_start_time;
+      let audio_video_discrepancy = if is_audio_early {
+        cur_recording.video_start_time - cur_recording.audio_start_time
+      } else {
+        cur_recording.audio_start_time - cur_recording.video_start_time
+      };
+
       if cur_index % 2 == 0 {
-        let audio_clip_time = cur_recording.early_end_time - cur_recording.audio_start_time;
-        let video_clip_time = cur_recording.early_end_time - cur_recording.video_start_time;
-        total_time_ms += audio_clip_time;
-        video_chunks.push(VideoChunk {
-          clip_index: cur_index,
-          video_offset: 0,
-          audio_offset: 0,
-          video_time: video_clip_time,
-          audio_time: audio_clip_time,
-        })
+        if is_audio_early {
+          let audio_clip_time =
+            cur_recording.early_end_time - cur_recording.audio_start_time - audio_video_discrepancy;
+          let video_clip_time = cur_recording.early_end_time - cur_recording.video_start_time;
+          total_time_ms += audio_clip_time;
+          video_chunks.push(VideoChunk {
+            clip_index: cur_index,
+            video_offset: 0,
+            audio_offset: audio_video_discrepancy,
+            video_time: video_clip_time,
+            audio_time: audio_clip_time,
+          })
+        } else {
+          let audio_clip_time = cur_recording.early_end_time - cur_recording.audio_start_time;
+          let video_clip_time =
+            cur_recording.early_end_time - cur_recording.video_start_time - audio_video_discrepancy;
+          total_time_ms += audio_clip_time;
+          video_chunks.push(VideoChunk {
+            clip_index: cur_index,
+            video_offset: audio_video_discrepancy,
+            audio_offset: 0,
+            video_time: video_clip_time,
+            audio_time: audio_clip_time,
+          })
+        }
       }
       // If it's a secondary recording, time is S_(i+1) - E_(i-1)
       else {
         let prev_recording = &state.recordings[cur_index - 1];
-        let (audio_clip_time, video_clip_time) = if cur_index == end_index {
-          (
-            timestamp - prev_recording.early_end_time,
-            timestamp - prev_recording.early_end_time,
-          )
+        if cur_index == end_index {
+          let audio_clip_time = timestamp - prev_recording.early_end_time;
+          let video_clip_time = timestamp - prev_recording.early_end_time;
+
+          total_time_ms += audio_clip_time;
+          if is_audio_early {
+            let video_offset = prev_recording.early_end_time - cur_recording.video_start_time;
+            let audio_offset = prev_recording.early_end_time
+              - cur_recording.video_start_time
+              - audio_video_discrepancy;
+
+            video_chunks.push(VideoChunk {
+              clip_index: cur_index,
+              video_offset,
+              audio_offset,
+              audio_time: audio_clip_time,
+              video_time: video_clip_time,
+            })
+          } else {
+            let video_offset = prev_recording.early_end_time
+              - cur_recording.video_start_time
+              - audio_video_discrepancy;
+            let audio_offset = prev_recording.early_end_time - cur_recording.video_start_time;
+
+            video_chunks.push(VideoChunk {
+              clip_index: cur_index,
+              video_offset,
+              audio_offset,
+              audio_time: audio_clip_time,
+              video_time: video_clip_time,
+            })
+          }
         } else {
           let next_recording = &state.recordings[cur_index + 1];
-          (
-            next_recording.audio_start_time - prev_recording.early_end_time,
-            next_recording.video_start_time - prev_recording.early_end_time,
-          )
-        };
+          let is_next_recording_audio_early =
+            next_recording.audio_start_time < next_recording.video_start_time;
 
-        total_time_ms += audio_clip_time;
-        video_chunks.push(VideoChunk {
-          clip_index: cur_index,
-          video_offset: prev_recording.early_end_time - cur_recording.video_start_time,
-          audio_offset: prev_recording.early_end_time - cur_recording.audio_start_time,
-          audio_time: audio_clip_time,
-          video_time: video_clip_time,
-        })
+          if is_next_recording_audio_early {
+            let video_clip_time = next_recording.video_start_time - prev_recording.early_end_time;
+            let audio_clip_time = next_recording.video_start_time - prev_recording.early_end_time;
+
+            total_time_ms += audio_clip_time;
+            if is_audio_early {
+              let video_offset = prev_recording.early_end_time - cur_recording.video_start_time;
+              let audio_offset = prev_recording.early_end_time
+                - cur_recording.video_start_time
+                - audio_video_discrepancy;
+
+              video_chunks.push(VideoChunk {
+                clip_index: cur_index,
+                video_offset,
+                audio_offset,
+                audio_time: audio_clip_time,
+                video_time: video_clip_time,
+              })
+            } else {
+              let video_offset = prev_recording.early_end_time
+                - cur_recording.video_start_time
+                - audio_video_discrepancy;
+              let audio_offset = prev_recording.early_end_time - cur_recording.video_start_time;
+
+              video_chunks.push(VideoChunk {
+                clip_index: cur_index,
+                video_offset,
+                audio_offset,
+                audio_time: audio_clip_time,
+                video_time: video_clip_time,
+              })
+            }
+          } else {
+            let video_clip_time = next_recording.audio_start_time - prev_recording.early_end_time;
+            let audio_clip_time = next_recording.audio_start_time - prev_recording.early_end_time;
+
+            total_time_ms += audio_clip_time;
+            if is_audio_early {
+              let video_offset = prev_recording.early_end_time - cur_recording.video_start_time;
+              let audio_offset = prev_recording.early_end_time
+                - cur_recording.video_start_time
+                - audio_video_discrepancy;
+
+              video_chunks.push(VideoChunk {
+                clip_index: cur_index,
+                video_offset,
+                audio_offset,
+                audio_time: audio_clip_time,
+                video_time: video_clip_time,
+              })
+            } else {
+              let video_offset = prev_recording.early_end_time
+                - cur_recording.video_start_time
+                - audio_video_discrepancy;
+              let audio_offset = prev_recording.early_end_time - cur_recording.video_start_time;
+
+              video_chunks.push(VideoChunk {
+                clip_index: cur_index,
+                video_offset,
+                audio_offset,
+                audio_time: audio_clip_time,
+                video_time: video_clip_time,
+              })
+            }
+          }
+        }
       }
 
       // 15 seconds hardcoded for now

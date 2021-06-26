@@ -118,6 +118,7 @@ impl FfmpegActiveRecording {
       .duration_since(UNIX_EPOCH)
       .expect("Time went backwards")
       .as_millis();
+    //
 
     let mut state = state_lock
       .write()
@@ -129,7 +130,7 @@ impl FfmpegActiveRecording {
       video_path: self.video_path.clone(),
       video_start_time: video_start_time.expect("Video start not not found."),
       early_end_time,
-    });
+    })
   }
 }
 

@@ -14,7 +14,6 @@ pub async fn stop_recording_chunk(state_lock: &'static RwLock<KaptState>, record
   };
 
   if let Some(active_recording) = &mut active_recording {
-    println!("Stopping the recording chunk...");
     active_recording.stop(state_lock).await;
 
     println!(
@@ -24,7 +23,11 @@ pub async fn stop_recording_chunk(state_lock: &'static RwLock<KaptState>, record
   }
 }
 
-pub async fn start_recording_chunk(state_lock: &'static RwLock<KaptState>, recording_index: usize) {
+pub async fn start_recording_chunk(
+  state_lock: &'static RwLock<KaptState>,
+  recording_index: usize,
+  audio_source: usize,
+) {
   let is_chunk_active = {
     let state = state_lock
       .read()
@@ -63,7 +66,7 @@ pub async fn start_recording_chunk(state_lock: &'static RwLock<KaptState>, recor
 
     // Video
     command = command.args(&["-f", "pulse"]);
-    command = command.args(&["-i", "6"]);
+    command = command.args(&["-i", &audio_source.to_string()]);
     command = command.args(&["-fflags", "+genpts"]);
     command = command.args(&["-async", "1"]);
 
@@ -93,7 +96,7 @@ pub async fn start_recording_chunk(state_lock: &'static RwLock<KaptState>, recor
   };
 }
 
-pub async fn start_recording(state_lock: &'static RwLock<KaptState>) {
+pub async fn start_recording(state_lock: &'static RwLock<KaptState>, audio_source: usize) {
   {
     let state = state_lock.read().expect("Failed to acquire write lock");
 
@@ -112,7 +115,7 @@ pub async fn start_recording(state_lock: &'static RwLock<KaptState>) {
   }
 
   let mut recording_index = 0;
-  recording::start_recording_chunk(state_lock, recording_index).await;
+  recording::start_recording_chunk(state_lock, recording_index, audio_source).await;
   use tokio::time::{sleep, Duration};
 
   // Spawn a recording chunk for 5 seconds in the future
@@ -131,7 +134,7 @@ pub async fn start_recording(state_lock: &'static RwLock<KaptState>) {
 
       if let Some(current_recording_session_id) = current_recording_session_id {
         if current_recording_session_id == recording_session_id {
-          start_recording_chunk(state_lock, recording_index).await;
+          start_recording_chunk(state_lock, recording_index, audio_source).await;
         }
       }
     }

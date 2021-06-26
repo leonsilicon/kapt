@@ -23,8 +23,8 @@ async fn stop_recording() {
 }
 
 #[tauri::command]
-async fn start_recording() {
-  recording::start_recording(&*KAPT_STATE).await;
+async fn start_recording(audio_source: usize) {
+  recording::start_recording(&*KAPT_STATE, audio_source).await;
 }
 
 #[tauri::command]

@@ -8,9 +8,11 @@
     </div>
     <button class="bg-blue-400 p-2 rounded-lg" @click="createKapture">Create Kapture</button>
     <div class="text-xl font-bold mt-4">Devices</div>
-    <div v-for="source in audioSources" :key="source.id">
-      {{ source.description }}
-    </div>
+    <select name="select" v-model="selectedAudioSource">
+      <option v-for="source in audioSources" :value="source.id" :key="source.id">
+        {{ source.description }}
+      </option>
+    </select>
   </div>
 </template>
 
@@ -36,14 +38,18 @@ export default defineComponent({
       id: number;
     };
 
+    const selectedAudioSource = ref();
     const audioSources: Ref<AudioSource[]> = ref([]);
     invoke('get_audio_sources').then((sources) => {
       audioSources.value = sources as AudioSource[];
+      selectedAudioSource.value = audioSources.value[0].id;
     });
 
     async function startRecording() {
       isRecording.value = true;
-      await invoke('start_recording');
+      await invoke('start_recording', {
+        audioSource: selectedAudioSource.value,
+      });
     }
 
     async function stopRecording() {
@@ -60,6 +66,7 @@ export default defineComponent({
       startRecording,
       stopRecording,
       createKapture,
+      selectedAudioSource,
       audioSources,
     };
   },

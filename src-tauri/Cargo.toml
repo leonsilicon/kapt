@@ -24,7 +24,6 @@ signal-hook = "0.3.9"
 lazy_static = "1.4.0"
 tokio = { version = "1.7.1", features = ["time"] }
 regex = "1.5.4"
-cpal = "0.13.3"
 
 [features]
 default = [ "custom-protocol" ]

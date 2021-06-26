@@ -1,8 +1,15 @@
 <template>
-  <button @click="startRecording">Start recording</button>
-  <button @click="stopRecording">Stop recording</button>
-  <div v-for="source in audioSources" :key="source.id">
-    {{ source.description }}
+  <div class="flex flex-col items-center">
+    <div class="flex flex-row mb-4">
+      <button class="bg-green-400 p-2 rounded-lg mr-1" @click="startRecording">
+        Start recording
+      </button>
+      <button class="bg-red-400 p-2 rounded-lg ml-1" @click="stopRecording">Stop recording</button>
+    </div>
+    <div class="text-xl font-bold">Devices</div>
+    <div v-for="source in audioSources" :key="source.id">
+      {{ source.description }}
+    </div>
   </div>
 </template>
 

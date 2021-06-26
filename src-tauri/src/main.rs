@@ -4,8 +4,10 @@
 )]
 
 mod audio;
+mod kapture;
 mod recording;
 mod state;
+mod utils;
 
 use lazy_static::lazy_static;
 use state::KaptState;
@@ -14,12 +16,22 @@ lazy_static! {
   static ref KAPT_STATE: RwLock<KaptState> = RwLock::new(KaptState::new());
 }
 
+#[tauri::command]
+fn stop_recording(state_lock: tauri::State<&'static RwLock<KaptState>>) {
+  recording::stop_recording(*state_lock);
+}
+
+#[tauri::command]
+fn start_recording(state_lock: tauri::State<&'static RwLock<KaptState>>) {
+  recording::start_recording(*state_lock);
+}
+
 fn main() {
   tauri::Builder::default()
     .manage(&*KAPT_STATE)
     .invoke_handler(tauri::generate_handler![
-      recording::start_recording,
-      recording::stop_recording,
+      start_recording,
+      stop_recording,
       audio::get_audio_sources
     ])
     .run(tauri::generate_context!())

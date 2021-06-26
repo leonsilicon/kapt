@@ -36,11 +36,7 @@ pub fn stop_recording_chunk(state_lock: &'static RwLock<KaptState>, recording_in
   }
 }
 
-pub fn start_recording_chunk(
-  window: tauri::Window,
-  state_lock: &'static RwLock<KaptState>,
-  recording_index: usize,
-) {
+pub fn start_recording_chunk(state_lock: &'static RwLock<KaptState>, recording_index: usize) {
   let recording_session_id = {
     let state = state_lock
       .read()
@@ -174,7 +170,7 @@ pub fn start_recording_chunk(
       }
 
       // Ffmpeg process ended
-      let end_time = SystemTime::now()
+      let early_end_time = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .expect("Time went backwards")
         .as_millis();
@@ -183,16 +179,13 @@ pub fn start_recording_chunk(
         .write()
         .expect("Failed to acquire state read lock");
 
-      state.add_recording(
-        recording_session_id,
-        FfmpegRecording {
-          audio_path,
-          audio_start_time: audio_start_time.expect("Audio start time not found."),
-          video_path,
-          video_start_time: video_start_time.expect("Video start not not found."),
-          end_time,
-        },
-      );
+      state.recordings.push(FfmpegRecording {
+        audio_path,
+        audio_start_time: audio_start_time.expect("Audio start time not found."),
+        video_path,
+        video_start_time: video_start_time.expect("Video start not not found."),
+        early_end_time,
+      });
     });
   }
 
@@ -210,22 +203,17 @@ pub fn start_recording_chunk(
     };
 
     if current_recording_session_id == Some(recording_session_id) {
-      start_recording_chunk(window, state_lock, if recording_index == 0 { 1 } else { 0 });
+      start_recording_chunk(state_lock, if recording_index == 0 { 1 } else { 0 });
     }
   });
 }
 
-#[tauri::command]
-pub fn start_recording(
-  window: tauri::Window,
-  state_lock: tauri::State<&'static RwLock<KaptState>>,
-) -> tauri::Result<()> {
+pub fn start_recording(state_lock: &'static RwLock<KaptState>) {
   {
     let state = state_lock.read().expect("Failed to acquire write lock");
 
     if state.is_recording() {
       println!("Recording has already been started.");
-      return Ok(());
     }
   }
 
@@ -237,13 +225,10 @@ pub fn start_recording(
     state.recording_session_id = Some(nanoid!());
   }
 
-  recording::start_recording_chunk(window.clone(), *state_lock, 0);
-
-  Ok(())
+  recording::start_recording_chunk(state_lock, 0);
 }
 
-#[tauri::command]
-pub fn stop_recording(state_lock: tauri::State<&'static RwLock<KaptState>>) {
+pub fn stop_recording(state_lock: &'static RwLock<KaptState>) {
   {
     let state = state_lock.read().expect("Failed to acquire write lock");
 
@@ -259,6 +244,6 @@ pub fn stop_recording(state_lock: tauri::State<&'static RwLock<KaptState>>) {
   }
 
   println!("Stopping the recording...");
-  recording::stop_recording_chunk(*state_lock, 0);
-  recording::stop_recording_chunk(*state_lock, 1);
+  recording::stop_recording_chunk(state_lock, 0);
+  recording::stop_recording_chunk(state_lock, 1);
 }

@@ -148,3 +148,17 @@ pub struct FfmpegRecording {
   // The audio/video is guaranteed to have ended **after** this time
   pub early_end_time: u128,
 }
+
+impl Drop for FfmpegRecording {
+  // Removing the temporary video and audio files when the recording is cleaned up
+  fn drop(&mut self) {
+    use std::fs;
+    if let Err(e) = fs::remove_file(&self.audio_path) {
+      log::error!("{}", e);
+    }
+
+    if let Err(e) = fs::remove_file(&self.video_path) {
+      log::error!("{}", e);
+    }
+  }
+}

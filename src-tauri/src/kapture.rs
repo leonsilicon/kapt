@@ -54,7 +54,7 @@ pub async fn process_kapture(state_lock: &'static RwLock<KaptState>, timestamp: 
       // Change the early_end_time of recording `i` such that it's never larger than the audio start time of recording `i + 2`
       for i in 0..(state.recordings.len() - 2) {
         let next_recording_audio_start_time = state.recordings[i + 2].audio_start_time;
-        let mut cur_recording = &mut state.recordings[i];
+        let cur_recording = &mut state.recordings[i];
 
         if cur_recording.early_end_time >= next_recording_audio_start_time {
           cur_recording.early_end_time = next_recording_audio_start_time - 1;

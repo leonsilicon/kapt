@@ -35,9 +35,9 @@ pub fn time_to_string(time: u128) -> String {
 // S_i = Start time of R_i recording
 // E_i = End time of R_i
 // Returns path of the final recording
-pub fn process_kapture(state_lock: &'static RwLock<KaptState>, timestamp: u128) -> String {
+pub async fn process_kapture(state_lock: &'static RwLock<KaptState>, timestamp: u128) -> String {
   // Stop the recording first
-  recording::stop_recording(state_lock);
+  recording::stop_recording(state_lock).await;
 
   let state = state_lock
     .read()
@@ -45,6 +45,11 @@ pub fn process_kapture(state_lock: &'static RwLock<KaptState>, timestamp: u128) 
 
   // Get the most recent main recording in the array
   let mut i = state.recordings.len() - 1;
+
+  println!(
+    "recording: {:?}; timestamp: {}",
+    state.recordings[i], timestamp
+  );
 
   while state.recordings[i].audio_start_time > timestamp {
     i -= 1;
@@ -188,6 +193,8 @@ pub fn process_kapture(state_lock: &'static RwLock<KaptState>, timestamp: u128) 
       .wait()
       .expect("failed to wait for concat");
 
+    println!("Final video path: {}", final_video_path);
+
     final_video_path
   };
 
@@ -206,8 +213,8 @@ pub fn process_kapture(state_lock: &'static RwLock<KaptState>, timestamp: u128) 
 }
 
 // timestamp - Unix timestamp of when the user pressed the Kapture button (in seconds)
-pub fn create_kapture(state_lock: &'static RwLock<KaptState>, timestamp: u128) -> String {
-  let kapture_path = process_kapture(state_lock, timestamp);
+pub async fn create_kapture(state_lock: &'static RwLock<KaptState>, timestamp: u128) -> String {
+  let kapture_path = process_kapture(state_lock, timestamp).await;
 
   kapture_path
 }

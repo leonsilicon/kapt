@@ -18,19 +18,19 @@ lazy_static! {
 }
 
 #[tauri::command]
-fn stop_recording(state_lock: tauri::State<&'static RwLock<KaptState>>) {
-  recording::stop_recording(*state_lock);
+async fn stop_recording() {
+  recording::stop_recording(&*KAPT_STATE).await;
 }
 
 #[tauri::command]
-fn start_recording(state_lock: tauri::State<&'static RwLock<KaptState>>) {
-  recording::start_recording(*state_lock);
+async fn start_recording() {
+  recording::start_recording(&*KAPT_STATE).await;
 }
 
 #[tauri::command]
 // timestamp - Unix timestamp of when the user pressed the Kapture button (in seconds)
-fn create_kapture(state_lock: tauri::State<&'static RwLock<KaptState>>, timestamp: u128) -> String {
-  kapture::create_kapture(*state_lock, timestamp)
+async fn create_kapture(timestamp: i64) -> String {
+  kapture::create_kapture(&*KAPT_STATE, timestamp as u128).await
 }
 
 #[tauri::command]

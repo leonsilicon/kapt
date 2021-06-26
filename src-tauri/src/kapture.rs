@@ -156,7 +156,7 @@ pub async fn process_kapture(state_lock: &'static RwLock<KaptState>, timestamp: 
         clip_index,
       } = video_chunk;
 
-      let temp_video_path = create_temp_path(&format!("{}.mov", nanoid!()));
+      let temp_video_path = create_temp_path(&format!("{}.mp4", nanoid!()));
 
       let clip = &state.recordings[clip_index];
       // Combining the audio and video of the clip and making a temporary clip
@@ -199,7 +199,7 @@ pub async fn process_kapture(state_lock: &'static RwLock<KaptState>, timestamp: 
     };
 
     let final_video_path = video_dir_path
-      .join(format!("{}.mov", nanoid!()))
+      .join(format!("{}.mp4", nanoid!()))
       .to_string_lossy()
       .to_string();
 

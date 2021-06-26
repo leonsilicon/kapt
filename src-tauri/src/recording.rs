@@ -40,7 +40,7 @@ pub async fn start_recording_chunk(
     stop_recording_chunk(state_lock, recording_index).await;
   }
 
-  let video_path = create_temp_path(&format!("{}.mov", nanoid!()));
+  let video_path = create_temp_path(&format!("{}.mp4", nanoid!()));
 
   // Recording the video
   let (video_rx, video_command_child) = {

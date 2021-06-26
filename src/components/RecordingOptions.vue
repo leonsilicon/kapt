@@ -83,7 +83,7 @@ export default defineComponent({
         const intArray = new Uint8Array(video);
         const objectUrl = URL.createObjectURL(
           new Blob([intArray], {
-            type: 'video/mov',
+            type: 'video/mp4',
           })
         );
         console.log(objectUrl);

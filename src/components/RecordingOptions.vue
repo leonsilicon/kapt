@@ -58,13 +58,13 @@ export default defineComponent({
 
     async function activateKapt() {
       isKaptActivated.value = true;
-      await invoke('start_recording', {
+      await invoke('activate_kapt', {
         audioSource: selectedAudioSource.value,
       });
     }
 
     async function deactivateKapt() {
-      await invoke('stop_recording');
+      await invoke('deactivate_kapt');
       isKaptActivated.value = false;
     }
 

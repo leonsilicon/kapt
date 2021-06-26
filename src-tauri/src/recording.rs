@@ -160,3 +160,12 @@ pub async fn stop_recording(state_lock: &'static RwLock<KaptState>) {
   recording::stop_recording_chunk(state_lock, 0).await;
   recording::stop_recording_chunk(state_lock, 1).await;
 }
+
+pub async fn deactivate_kapt(state_lock: &'static RwLock<KaptState>) {
+  stop_recording(state_lock).await;
+
+  let mut state = state_lock.write().expect("Failed to acquire write lock");
+  state.recordings = vec![];
+  state.recording_session_id = None;
+  state.active_recordings = [None, None];
+}

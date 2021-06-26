@@ -124,13 +124,17 @@ impl FfmpegActiveRecording {
       .write()
       .expect("Failed to acquire state read lock");
 
-    state.recordings.push(FfmpegRecording {
+    let recording = FfmpegRecording {
       audio_path: self.audio_path.clone(),
       audio_start_time: audio_start_time.expect("Audio start time not found."),
       video_path: self.video_path.clone(),
       video_start_time: video_start_time.expect("Video start not not found."),
       early_end_time,
-    })
+    };
+
+    println!("Recording: {:?}", recording);
+
+    state.recordings.push(recording);
   }
 }
 

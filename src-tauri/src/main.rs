@@ -18,12 +18,12 @@ lazy_static! {
 }
 
 #[tauri::command]
-async fn stop_recording() {
-  recording::stop_recording(&*KAPT_STATE).await;
+async fn deactivate_kapt() {
+  recording::deactivate_kapt(&*KAPT_STATE).await;
 }
 
 #[tauri::command]
-async fn start_recording(audio_source: usize) {
+async fn activate_kapt(audio_source: usize) {
   recording::start_recording(&*KAPT_STATE, audio_source).await;
 }
 
@@ -42,8 +42,8 @@ fn main() {
   tauri::Builder::default()
     .manage(&*KAPT_STATE)
     .invoke_handler(tauri::generate_handler![
-      start_recording,
-      stop_recording,
+      activate_kapt,
+      deactivate_kapt,
       create_kapture,
       get_audio_sources
     ])

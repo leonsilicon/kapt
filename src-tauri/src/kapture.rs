@@ -48,13 +48,17 @@ pub async fn process_kapture(state_lock: &'static RwLock<KaptState>, timestamp: 
       .recordings
       .sort_by(|r1, r2| r1.audio_start_time.cmp(&r2.audio_start_time));
 
-    // Change the early_end_time of recording `i` such that it's never larger than the audio start time of recording `i + 2`
-    for i in 0..(state.recordings.len() - 2) {
-      let next_recording_audio_start_time = state.recordings[i + 2].audio_start_time;
-      let mut cur_recording = &mut state.recordings[i];
+    println!("Sorted Recordings: {:?}", state.recordings);
 
-      if cur_recording.early_end_time >= next_recording_audio_start_time {
-        cur_recording.early_end_time = next_recording_audio_start_time - 1;
+    if state.recordings.len() > 2 {
+      // Change the early_end_time of recording `i` such that it's never larger than the audio start time of recording `i + 2`
+      for i in 0..(state.recordings.len() - 2) {
+        let next_recording_audio_start_time = state.recordings[i + 2].audio_start_time;
+        let mut cur_recording = &mut state.recordings[i];
+
+        if cur_recording.early_end_time >= next_recording_audio_start_time {
+          cur_recording.early_end_time = next_recording_audio_start_time - 1;
+        }
       }
     }
   }
@@ -230,7 +234,7 @@ pub async fn process_kapture(state_lock: &'static RwLock<KaptState>, timestamp: 
 
   println!("i: {:?}, timestamp: {}", i, timestamp);
 
-  if i % 2 == 0 {
+  let video_path = if i % 2 == 0 {
     // First case
     println!("First case");
     concat_recordings(i)
@@ -244,7 +248,15 @@ pub async fn process_kapture(state_lock: &'static RwLock<KaptState>, timestamp: 
       println!("Third case");
       concat_recordings(i - 1)
     }
+  };
+
+  // Clear recordings now that we've processed it
+  {
+    let mut state = state_lock.write().expect("Failed to acquire write lock");
+    state.recordings = vec![];
   }
+
+  video_path
 }
 
 // timestamp - Unix timestamp of when the user pressed the Kapture button (in seconds)

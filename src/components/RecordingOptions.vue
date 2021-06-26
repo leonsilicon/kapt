@@ -1,18 +1,27 @@
 <template>
   <div class="flex flex-col items-center">
     <div class="flex flex-row mb-2">
-      <button class="bg-green-400 p-2 rounded-lg mr-1" @click="startRecording">
-        Start recording
+      <button
+        v-if="!isKaptActivated"
+        class="bg-green-400 p-2 rounded-lg mr-1"
+        @click="activateKapt"
+      >
+        Activate Kapt
       </button>
-      <button class="bg-red-400 p-2 rounded-lg ml-1" @click="stopRecording">Stop recording</button>
+      <button v-else class="bg-red-400 p-2 rounded-lg ml-1" @click="deactivateKapt">
+        Deactivate Kapt
+      </button>
     </div>
-    <button class="bg-blue-400 p-2 rounded-lg" @click="createKapture">Create Kapture</button>
+    <button v-if="isKaptActivated" class="bg-blue-400 p-2 rounded-lg" @click="createKapture">
+      Create Kapture
+    </button>
     <div class="text-xl font-bold mt-4">Devices</div>
     <select name="select" v-model="selectedAudioSource">
       <option v-for="source in audioSources" :value="source.id" :key="source.id">
         {{ source.description }}
       </option>
     </select>
+    <video v-if="latestKaptureObjectUrl !== null" controls :src="latestKaptureObjectUrl"></video>
   </div>
 </template>
 
@@ -20,11 +29,13 @@
 import { ref, defineComponent, Ref } from 'vue';
 import { invoke } from '@tauri-apps/api/tauri';
 import { listen } from '@tauri-apps/api/event';
+import { readBinaryFile } from '@tauri-apps/api/fs';
 
 export default defineComponent({
   name: 'HelloWorld',
   setup() {
-    const isRecording = ref(false);
+    const isKaptActivated = ref(false);
+    const latestKaptureObjectUrl = ref<string | null>(null);
     listen('message', (msg) => {
       console.log(msg);
     });
@@ -45,26 +56,39 @@ export default defineComponent({
       selectedAudioSource.value = audioSources.value[0].id;
     });
 
-    async function startRecording() {
-      isRecording.value = true;
+    async function activateKapt() {
+      isKaptActivated.value = true;
       await invoke('start_recording', {
         audioSource: selectedAudioSource.value,
       });
     }
 
-    async function stopRecording() {
+    async function deactivateKapt() {
       await invoke('stop_recording');
-      isRecording.value = false;
+      isKaptActivated.value = false;
     }
 
     async function createKapture() {
-      const finalPath = await invoke('create_kapture', { timestamp: new Date().getTime() });
-      console.log(finalPath);
+      const kapturePath: string = await invoke('create_kapture', {
+        timestamp: new Date().getTime(),
+      });
+      readBinaryFile(kapturePath).then((video) => {
+        const intArray = new Uint8Array(video);
+        const objectUrl = URL.createObjectURL(
+          new Blob([intArray], {
+            type: 'video/mp4',
+          })
+        );
+        console.log(objectUrl);
+        latestKaptureObjectUrl.value = objectUrl;
+      });
     }
 
     return {
-      startRecording,
-      stopRecording,
+      isKaptActivated,
+      latestKaptureObjectUrl,
+      activateKapt,
+      deactivateKapt,
       createKapture,
       selectedAudioSource,
       audioSources,

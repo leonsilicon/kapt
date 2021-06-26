@@ -13,5 +13,6 @@ module.exports = {
     '@typescript-eslint/no-var-requires': 'off',
     'import/no-extraneous-dependencies': 'off',
     'prefer-destructuring': 'off',
+    '@typescript-eslint/no-non-null-assertion': 'off',
   },
 };

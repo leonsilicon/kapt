@@ -1,6 +1,4 @@
-use std::env;
 use std::fs;
-use std::path::Path;
 use std::process::Command;
 use std::sync::RwLock;
 
@@ -8,6 +6,7 @@ use crate::recording;
 use crate::state::KaptState;
 use crate::utils::create_temp_path;
 use nanoid::nanoid;
+use tauri::api::path as tauri_path;
 
 pub fn offset_to_string(offset: u128) -> String {
   let milliseconds = offset % 1000;
@@ -153,10 +152,7 @@ pub async fn process_kapture(state_lock: &'static RwLock<KaptState>, timestamp: 
         clip_index,
       } = video_chunk;
 
-      let temp_video_path = Path::new(&env::temp_dir())
-        .join(format!("{}.mp4", nanoid!()))
-        .to_string_lossy()
-        .to_string();
+      let temp_video_path = create_temp_path(&format!("{}.mp4", nanoid!()));
 
       let clip = &state.recordings[clip_index];
       // Combining the audio and video of the clip and making a temporary clip
@@ -190,9 +186,18 @@ pub async fn process_kapture(state_lock: &'static RwLock<KaptState>, timestamp: 
     }
 
     let temp_video_list_path = create_temp_path(&format!("{}.txt", nanoid!()));
-    let final_video_path = create_temp_path(&format!("{}.mp4", nanoid!()));
-
     fs::write(&temp_video_list_path, video_path_list).expect("Failed to write video list file");
+
+    let video_dir_path = if let Some(video_dir) = tauri_path::video_dir() {
+      video_dir
+    } else {
+      tauri_path::home_dir().expect("Could not get user's home directory.")
+    };
+
+    let final_video_path = video_dir_path
+      .join(format!("{}.mp4", nanoid!()))
+      .to_string_lossy()
+      .to_string();
 
     let mut command = Command::new("ffmpeg");
 
@@ -209,7 +214,7 @@ pub async fn process_kapture(state_lock: &'static RwLock<KaptState>, timestamp: 
       .wait()
       .expect("failed to wait for concat");
 
-    println!("Final video path: {}", final_video_path);
+    println!("Final video path: {:?}", final_video_path);
 
     final_video_path
   };

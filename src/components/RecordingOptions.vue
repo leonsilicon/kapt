@@ -1,6 +1,9 @@
 <template>
   <button @click="startRecording">Start recording</button>
   <button @click="stopRecording">Stop recording</button>
+  <div v-for="source in audioSources" :key="source.id">
+    {{ source.description }}
+  </div>
 </template>
 
 <script lang="ts">
@@ -16,6 +19,15 @@ export default defineComponent({
       console.log(msg);
     });
 
+    listen('audio_devices', (msg) => {
+      console.log('audio devices', msg);
+    });
+
+    const audioSources = ref([]);
+    invoke('get_audio_sources').then((sources) => {
+      audioSources.value = sources;
+    });
+
     async function startRecording() {
       isRecording.value = true;
       await invoke('start_recording');
@@ -28,9 +40,10 @@ export default defineComponent({
 
     return {
       startRecording,
-      stopRecording
+      stopRecording,
+      audioSources,
     };
-  }
+  },
 });
 </script>
 

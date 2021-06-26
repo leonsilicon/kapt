@@ -68,39 +68,19 @@ use std::path::Path;
 fn stop_recording_chunk(state_lock: &'static RwLock<KaptState>, recording_index: usize) {
   let mut state = state_lock.write().expect("Failed to acquire write lock");
 
-  let active_recording = Option::take(&mut state.active_recordings[recording_index]);
-  if let Some(active_recording) = active_recording {
-    let FfmpegActiveRecording {
-      start_time,
-      mut command_child,
-      path,
-    } = active_recording;
-
-    let end_time = SystemTime::now()
-      .duration_since(UNIX_EPOCH)
-      .expect("Time went backwards")
-      .as_millis();
-
-    let recording_session_id = state
-      .recording_session_id
-      .clone()
-      .expect("Session ID not present");
-    // Adding a past recording
-    state.add_recording(
-      recording_session_id.clone(),
-      FfmpegRecording {
-        end_time,
-        path: path.clone(),
-        start_time: start_time.expect("Start time not present"),
-      },
-    );
-
+  let mut active_recording = Option::take(&mut state.active_recordings[recording_index]);
+  if let Some(active_recording) = &mut active_recording {
+    println!("Stopping the recording chunk...");
     // Stopping the ffmpeg recording process
-    command_child
+    active_recording
+      .command_child
       .write(&[b'q'])
       .expect("Failed to stop ffmpeg process");
 
-    println!("Recording {} path: {}", recording_index, path);
+    println!(
+      "Recording {} path: {}",
+      recording_index, active_recording.path
+    );
   }
 }
 
@@ -154,9 +134,9 @@ fn start_recording_chunk(
   let window_clone = window.clone();
   // Spawn a recording chunk for right now
   tauri::async_runtime::spawn(async move {
-    println!("here");
     let window = window_clone;
-    // read events such as stdout
+    let mut start_time: Option<u128> = None;
+
     while let Some(event) = rx.recv().await {
       println!("{:?}", event);
       // Ffmpeg logs to stderr
@@ -164,24 +144,17 @@ fn start_recording_chunk(
         use regex::Regex;
         lazy_static! {
           static ref START_TIME_RE: Regex =
-            Regex::new(r#"start: (\d+),"#).expect("Failed to compile regex");
+            Regex::new(r#"start: (\d+)\."#).expect("Failed to compile regex");
         };
 
-        println!("{}", line);
         if let Some(cap) = START_TIME_RE.captures(&line) {
-          println!("captured: {}", line);
           if let Some(m) = cap.get(1) {
-            let mut state = state_lock
-              .write()
-              .expect("Failed to acquire state read lock");
             let unix_timestamp = m
               .as_str()
               .to_string()
               .parse::<u128>()
               .expect("Failed to parse integer");
-            if let Some(ref mut recording) = &mut state.active_recordings[recording_index] {
-              recording.start_time = Some(unix_timestamp)
-            }
+            start_time = Some(unix_timestamp);
           }
 
           println!("{}", line);
@@ -191,6 +164,37 @@ fn start_recording_chunk(
         }
       }
     }
+
+    // Ffmpeg process ended
+    let end_time = SystemTime::now()
+      .duration_since(UNIX_EPOCH)
+      .expect("Time went backwards")
+      .as_millis();
+
+    let mut state = state_lock
+      .write()
+      .expect("Failed to acquire state read lock");
+
+    let recording_session_id = state
+      .recording_session_id
+      .clone()
+      .expect("Session ID not present");
+
+    let path = state.active_recordings[recording_index]
+      .as_ref()
+      .unwrap()
+      .path
+      .clone();
+
+    // Adding a past recording
+    state.add_recording(
+      recording_session_id.clone(),
+      FfmpegRecording {
+        end_time,
+        path: path.to_string(),
+        start_time: start_time.expect("Start time not present"),
+      },
+    );
   });
 
   use tokio::time::{sleep, Duration};

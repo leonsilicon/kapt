@@ -6,11 +6,15 @@
 <script lang="ts">
 import { ref, defineComponent } from 'vue';
 import { invoke } from '@tauri-apps/api/tauri';
+import { listen } from '@tauri-apps/api/event';
 
 export default defineComponent({
   name: 'HelloWorld',
   setup() {
     const isRecording = ref(false);
+    listen('message', (msg) => {
+      console.log(msg);
+    });
 
     async function startRecording() {
       isRecording.value = true;
@@ -18,6 +22,7 @@ export default defineComponent({
     }
 
     async function stopRecording() {
+      await invoke('stop_recording');
       isRecording.value = false;
     }
 

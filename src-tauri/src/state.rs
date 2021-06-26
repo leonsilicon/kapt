@@ -1,6 +1,6 @@
-use std::collections::HashMap;
-
 use tauri::api::process::CommandChild;
+
+use std::collections::HashMap;
 
 pub struct KaptState {
   pub active_recordings: [Option<FfmpegActiveRecording>; 2],
@@ -42,14 +42,19 @@ impl KaptState {
 
 // A recording that's currently in process
 pub struct FfmpegActiveRecording {
-  pub path: String,
-  pub start_time: Option<u128>,
-  pub command_child: CommandChild,
+  pub video_command_child: CommandChild,
+  pub video_path: String,
+  pub video_start_time: Option<u128>,
+  pub audio_command_child: CommandChild,
+  pub audio_path: String,
+  pub audio_start_time: Option<u128>,
 }
 
 // A recording that has already ended
 pub struct FfmpegRecording {
-  pub path: String,
-  pub start_time: u128,
+  pub video_path: String,
+  pub video_start_time: u128,
+  pub audio_path: String,
+  pub audio_start_time: u128,
   pub end_time: u128,
 }

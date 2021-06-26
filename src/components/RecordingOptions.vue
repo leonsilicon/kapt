@@ -7,7 +7,7 @@
 </template>
 
 <script lang="ts">
-import { ref, defineComponent } from 'vue';
+import { ref, defineComponent, Ref } from 'vue';
 import { invoke } from '@tauri-apps/api/tauri';
 import { listen } from '@tauri-apps/api/event';
 
@@ -23,9 +23,14 @@ export default defineComponent({
       console.log('audio devices', msg);
     });
 
-    const audioSources = ref([]);
+    type AudioSource = {
+      description: string;
+      id: number;
+    };
+
+    const audioSources: Ref<AudioSource[]> = ref([]);
     invoke('get_audio_sources').then((sources) => {
-      audioSources.value = sources;
+      audioSources.value = sources as AudioSource[];
     });
 
     async function startRecording() {

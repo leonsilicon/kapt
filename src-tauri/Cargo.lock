@@ -32,6 +32,7 @@ name = "app"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "lazy_static",
  "nanoid",
  "serde",
  "serde_json",

@@ -8,12 +8,21 @@ use std::sync::RwLock;
 use tauri::api::process::{Command, CommandChild, CommandEvent};
 
 struct KaptState {
-  pub is_recording: bool,
   pub active_recordings: [Option<FfmpegActiveRecording>; 2],
+
+  // Used to prevent a thread from continuing a chunk recording when the
+  // associated recording session has ended
+  pub recording_session_id: Option<String>,
+}
+
+impl KaptState {
+  pub fn is_recording(&self) -> bool {
+    self.active_recordings[0].is_some() || self.active_recordings[1].is_some()
+  }
 }
 
 struct FfmpegActiveRecording {
-  pub id: String,
+  pub path: String,
   pub command_child: CommandChild,
 }
 
@@ -21,20 +30,12 @@ use nanoid::nanoid;
 use std::env;
 use std::path::Path;
 
-#[tauri::command]
-fn start_recording(
+fn start_recording_chunk(
   window: tauri::Window,
-  state: tauri::State<RwLock<KaptState>>,
-) -> tauri::Result<()> {
-  let mut state = state.write().expect("Failed to acquire write lock");
-
-  if state.is_recording {
-    println!("Recording has already been started.");
-    return Ok(());
-  }
-
-  println!("Starting the recording...");
-  state.is_recording = true;
+  state_lock: &'static RwLock<KaptState>,
+  recording_index: usize,
+) {
+  let mut state = state_lock.write().expect("Failed to acquire write lock");
 
   let mut command =
     Command::new_sidecar("ffmpeg").expect("failed to create `ffmpeg` binary command");
@@ -44,20 +45,32 @@ fn start_recording(
   command = command.args(&["-f", "x11grab"]);
   command = command.args(&["-i", ":0.0+100,200"]);
 
-  let path = Path::new(&env::temp_dir()).join(format!("{}.mp4", nanoid!()));
+  command = command.args(&["-f", "pulse"]);
+  command = command.args(&["-i", "default"]);
+  command = command.args(&["-preset", "ultrafast"]);
+  command = command.args(&["-crf", "18"]);
+  command = command.args(&["-pix_fmt", "yuv420p"]);
 
-  command = command.args(&[path.to_string_lossy()]);
+  let path = Path::new(&env::temp_dir())
+    .join(format!("{}.mp4", nanoid!()))
+    .to_string_lossy()
+    .to_string();
+
+  // Adding the .mp4 path to the command
+  command = command.args(&[&path]);
 
   let (mut rx, command_child) = command.spawn().expect("Failed to spawn ffmpeg");
 
   println!("Ffmpeg process spawned...");
-
   state.active_recordings[0] = Some(FfmpegActiveRecording {
     command_child,
-    id: nanoid!(),
+    path,
   });
 
+  let window_clone = window.clone();
+  // Spawn a recording chunk for right now
   tauri::async_runtime::spawn(async move {
+    let window = window_clone;
     // read events such as stdout
     while let Some(event) = rx.recv().await {
       println!("{:?}", event);
@@ -70,6 +83,36 @@ fn start_recording(
     }
   });
 
+  // Spawn a recording chunk for 5 seconds in the future
+  tauri::async_runtime::spawn(async move {
+    start_recording_chunk(window, state_lock, if recording_index == 0 { 1 } else { 0 });
+  });
+}
+
+#[tauri::command]
+fn start_recording(
+  window: tauri::Window,
+  state_lock: tauri::State<&'static RwLock<KaptState>>,
+) -> tauri::Result<()> {
+  {
+    let state = state_lock.read().expect("Failed to acquire write lock");
+
+    if state.is_recording() {
+      println!("Recording has already been started.");
+      return Ok(());
+    }
+  }
+
+  println!("Starting the recording...");
+
+  // Generating a recording session ID
+  {
+    let mut state = state_lock.write().expect("Failed to acquire write lock");
+    state.recording_session_id = Some(nanoid!());
+  }
+
+  start_recording_chunk(window.clone(), *state_lock, 0);
+
   Ok(())
 }
 
@@ -77,32 +120,43 @@ fn start_recording(
 fn stop_recording(state: tauri::State<RwLock<KaptState>>) {
   let mut state = state.write().expect("Failed to acquire write lock");
 
-  if state.is_recording == false {
+  if state.is_recording() {
     println!("There is no recording in process.");
     return;
   }
 
   println!("Stopping the recording...");
 
-  let recording_child = Option::take(&mut state.active_recordings[0]);
+  if let Some(mut recording_child) = Option::take(&mut state.active_recordings[0]) {
+    recording_child
+      .command_child
+      .write(&[b'q'])
+      .expect("Failed to stop ffmpeg process");
 
-  recording_child
-    .unwrap()
-    .command_child
-    .write(&[b'q'])
-    .expect("Failed to stop ffmpeg process");
+    println!("Recording 0 path: {}", recording_child.path);
+  }
 
-  state.is_recording = false;
+  if let Some(mut recording_child) = Option::take(&mut state.active_recordings[1]) {
+    recording_child
+      .command_child
+      .write(&[b'q'])
+      .expect("Failed to stop ffmpeg process");
+
+    println!("Recording 1 path: {}", recording_child.path);
+  }
+}
+
+use lazy_static::lazy_static;
+lazy_static! {
+  static ref KAPT_STATE: RwLock<KaptState> = RwLock::new(KaptState {
+    recording_session_id: None,
+    active_recordings: [None, None],
+  });
 }
 
 fn main() {
-  let kapt_state = KaptState {
-    is_recording: false,
-    active_recordings: [None, None],
-  };
-
   tauri::Builder::default()
-    .manage(RwLock::new(kapt_state))
+    .manage(&*KAPT_STATE)
     .invoke_handler(tauri::generate_handler![start_recording, stop_recording])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");

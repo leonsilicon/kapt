@@ -155,6 +155,7 @@ impl Drop for FfmpegRecording {
   // Removing the temporary video and audio files when the recording is cleaned up
   fn drop(&mut self) {
     use std::fs;
+    /*
     if let Err(e) = fs::remove_file(&self.audio_path) {
       log::error!("{}", e);
     }
@@ -162,5 +163,6 @@ impl Drop for FfmpegRecording {
     if let Err(e) = fs::remove_file(&self.video_path) {
       log::error!("{}", e);
     }
+    */
   }
 }

@@ -20,7 +20,7 @@ pub fn time_to_string(time: u128) -> String {
   let hours = time / (1000 * 60 * 60);
 
   let time_string = format!(
-    "{:0>2}:{:0>2}:{:0>2}.{}",
+    "{:0>2}:{:0>2}:{:0>2}.{:0>3}",
     hours, minutes, seconds, milliseconds
   );
 

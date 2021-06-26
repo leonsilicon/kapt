@@ -64,6 +64,7 @@ export default defineComponent({
 
     async function activateKapt() {
       isKaptActivated.value = true;
+      console.log(selectedAudioSource.value);
       await invoke('activate_kapt', {
         audioSource: selectedAudioSource.value,
       });
@@ -82,7 +83,7 @@ export default defineComponent({
         const intArray = new Uint8Array(video);
         const objectUrl = URL.createObjectURL(
           new Blob([intArray], {
-            type: 'video/mp4',
+            type: 'video/mov',
           })
         );
         console.log(objectUrl);

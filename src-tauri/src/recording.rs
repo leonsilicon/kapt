@@ -40,7 +40,7 @@ pub async fn start_recording_chunk(
     stop_recording_chunk(state_lock, recording_index).await;
   }
 
-  let video_path = create_temp_path(&format!("{}.mp4", nanoid!()));
+  let video_path = create_temp_path(&format!("{}.mov", nanoid!()));
 
   // Recording the video
   let (video_rx, video_command_child) = {
@@ -69,6 +69,7 @@ pub async fn start_recording_chunk(
     command = command.args(&["-i", &audio_source.to_string()]);
     command = command.args(&["-fflags", "+genpts"]);
     command = command.args(&["-async", "1"]);
+    command = command.args(&["-vsync", "1"]);
 
     // Adding the .wav path to the command
     command = command.args(&[&audio_path]);

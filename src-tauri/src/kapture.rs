@@ -48,6 +48,16 @@ pub async fn process_kapture(state_lock: &'static RwLock<KaptState>, timestamp: 
     state
       .recordings
       .sort_by(|r1, r2| r1.audio_start_time.cmp(&r2.audio_start_time));
+
+    // Change the early_end_time of recording `i` such that it's never larger than the audio start time of recording `i + 2`
+    for i in 0..(state.recordings.len() - 2) {
+      let next_recording_audio_start_time = state.recordings[i + 2].audio_start_time;
+      let mut cur_recording = &mut state.recordings[i];
+
+      if cur_recording.early_end_time >= next_recording_audio_start_time {
+        cur_recording.early_end_time = next_recording_audio_start_time - 1;
+      }
+    }
   }
 
   let state = state_lock
@@ -118,13 +128,13 @@ pub async fn process_kapture(state_lock: &'static RwLock<KaptState>, timestamp: 
         video_chunks[n - 1].audio_offset += total_time_ms - 15 * 1000;
         video_chunks[n - 1].video_offset += total_time_ms - 15 * 1000;
 
-				video_chunks.reverse();
+        video_chunks.reverse();
         return video_chunks;
       }
     }
 
     // The clips combined don't exceed 15 seconds
-		video_chunks.reverse();
+    video_chunks.reverse();
     video_chunks
   };
 

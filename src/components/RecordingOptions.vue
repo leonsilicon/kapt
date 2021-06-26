@@ -16,7 +16,7 @@
       Create Kapture
     </button>
     <div class="text-xl font-bold mt-4">Devices</div>
-    <select name="select" v-model="selectedAudioSource">
+    <select @change="setAudioSource" name="select" v-model="selectedAudioSource">
       <option v-for="source in audioSources" :value="source.id" :key="source.id">
         {{ source.description }}
       </option>
@@ -65,9 +65,7 @@ export default defineComponent({
     async function activateKapt() {
       isKaptActivated.value = true;
       console.log(selectedAudioSource.value);
-      await invoke('activate_kapt', {
-        audioSource: selectedAudioSource.value,
-      });
+      await invoke('activate_kapt');
     }
 
     async function deactivateKapt() {
@@ -86,14 +84,20 @@ export default defineComponent({
             type: 'video/mp4',
           })
         );
-        console.log(objectUrl);
         latestKaptureObjectUrl.value = objectUrl;
+      });
+    }
+
+    async function setAudioSource() {
+      await invoke('set_audio_source', {
+        audioSource: selectedAudioSource.value,
       });
     }
 
     return {
       isKaptActivated,
       latestKaptureObjectUrl,
+      setAudioSource,
       activateKapt,
       deactivateKapt,
       createKapture,

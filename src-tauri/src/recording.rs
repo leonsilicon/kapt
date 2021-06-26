@@ -23,16 +23,15 @@ pub async fn stop_recording_chunk(state_lock: &'static RwLock<KaptState>, record
   }
 }
 
-pub async fn start_recording_chunk(
-  state_lock: &'static RwLock<KaptState>,
-  recording_index: usize,
-  audio_source: usize,
-) {
-  let is_chunk_active = {
+pub async fn start_recording_chunk(state_lock: &'static RwLock<KaptState>, recording_index: usize) {
+  let (is_chunk_active, audio_source) = {
     let state = state_lock
       .read()
       .expect("Failed to acquire state read lock");
-    state.active_recordings[recording_index].is_some()
+    (
+      state.active_recordings[recording_index].is_some(),
+      state.audio_source,
+    )
   };
 
   // If the current recording index is taken, stop it
@@ -97,7 +96,7 @@ pub async fn start_recording_chunk(
   };
 }
 
-pub async fn start_recording(state_lock: &'static RwLock<KaptState>, audio_source: usize) {
+pub async fn start_recording(state_lock: &'static RwLock<KaptState>) {
   {
     let state = state_lock.read().expect("Failed to acquire write lock");
 
@@ -116,7 +115,7 @@ pub async fn start_recording(state_lock: &'static RwLock<KaptState>, audio_sourc
   }
 
   let mut recording_index = 0;
-  recording::start_recording_chunk(state_lock, recording_index, audio_source).await;
+  recording::start_recording_chunk(state_lock, recording_index).await;
   use tokio::time::{sleep, Duration};
 
   // Spawn a recording chunk for 5 seconds in the future
@@ -135,7 +134,7 @@ pub async fn start_recording(state_lock: &'static RwLock<KaptState>, audio_sourc
 
       if let Some(current_recording_session_id) = current_recording_session_id {
         if current_recording_session_id == recording_session_id {
-          start_recording_chunk(state_lock, recording_index, audio_source).await;
+          start_recording_chunk(state_lock, recording_index).await;
         }
       }
     }

@@ -23,14 +23,20 @@ async fn deactivate_kapt() {
 }
 
 #[tauri::command]
-async fn activate_kapt(audio_source: usize) {
-  recording::start_recording(&*KAPT_STATE, audio_source).await;
+async fn activate_kapt() {
+  recording::start_recording(&*KAPT_STATE).await;
 }
 
 #[tauri::command]
 // timestamp - Unix timestamp of when the user pressed the Kapture button (in seconds)
 async fn create_kapture(timestamp: i64) -> String {
   kapture::create_kapture(&*KAPT_STATE, timestamp as u128).await
+}
+
+#[tauri::command]
+fn set_audio_source(audio_source: usize) {
+  let mut state = &mut *KAPT_STATE.write().expect("Failed to get write lock");
+  state.audio_source = audio_source;
 }
 
 #[tauri::command]
@@ -45,7 +51,8 @@ fn main() {
       activate_kapt,
       deactivate_kapt,
       create_kapture,
-      get_audio_sources
+      get_audio_sources,
+      set_audio_source
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");

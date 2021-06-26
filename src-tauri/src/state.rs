@@ -12,6 +12,9 @@ pub struct KaptState {
 
   // A map from a session ID to a Vec of FfmpegRecordings
   pub recordings: Vec<FfmpegRecording>,
+
+  // The currently selected audio source for recording
+  pub audio_source: usize,
 }
 
 impl KaptState {
@@ -24,6 +27,7 @@ impl KaptState {
       active_recordings: [None, None],
       recording_session_id: None,
       recordings: vec![],
+      audio_source: 0,
     }
   }
 }

@@ -8,25 +8,25 @@ use crate::utils::create_temp_path;
 use nanoid::nanoid;
 use tauri::api::path as tauri_path;
 
-pub fn offset_to_string(offset: u128) -> String {
-  let milliseconds = offset % 1000;
+pub fn time_to_string(time: u128) -> String {
+  let milliseconds = time % 1000;
   // 1000 milliseconds in a second
-  let seconds = offset / 1000;
+  let seconds = time / 1000;
 
   // 60 seconds in a minute
-  let minutes = offset / (1000 * 60);
+  let minutes = time / (1000 * 60);
 
   // 60 minutes in an hour
-  let hours = offset / (1000 * 60 * 60);
+  let hours = time / (1000 * 60 * 60);
 
-  return format!("{}:{}:{}.{}", hours, minutes, seconds, milliseconds);
-}
+  let time_string = format!(
+    "{:0>2}:{:0>2}:{:0>2}.{}",
+    hours, minutes, seconds, milliseconds
+  );
 
-// Converts a time in milliseconds to a string with time in seconds (and decimals)
-pub fn time_to_string(time: u128) -> String {
-  let seconds = (time as f64) / 1000.0;
+  println!("time: {}, time string: {}", time, time_string);
 
-  return seconds.to_string();
+  time_string
 }
 
 // R_i = Recording at position `i`; main recordings have an even index `i`, secondary
@@ -266,11 +266,17 @@ pub async fn process_kapture(state_lock: &'static RwLock<KaptState>, timestamp: 
       // Combining the audio and video of the clip and making a temporary clip
       let mut command = Command::new("ffmpeg");
 
+      println!("Video chunk: {:?}", video_chunk);
+      println!("Video offset: {}", time_to_string(video_offset));
+      println!("Video time: {}", time_to_string(video_time));
+      println!("Audio offset: {}", time_to_string(audio_offset));
+      println!("Audio time: {}", time_to_string(audio_time));
+
       command
-        .args(&["-ss", &offset_to_string(video_offset)])
+        .args(&["-ss", &time_to_string(video_offset)])
         .args(&["-t", &time_to_string(video_time)])
         .args(&["-i", &clip.video_path])
-        .args(&["-ss", &offset_to_string(audio_offset)])
+        .args(&["-ss", &time_to_string(audio_offset)])
         .args(&["-t", &time_to_string(audio_time)])
         .args(&["-i", &clip.audio_path])
         .args(&["-map", "0:v:0", "-map", "1:a:0"])
@@ -356,6 +362,11 @@ pub async fn process_kapture(state_lock: &'static RwLock<KaptState>, timestamp: 
 
   // Clear recordings now that we've processed it
   state.recordings = vec![];
+
+  // Reactivate the recording so that the user can make more kaptures
+  tauri::async_runtime::spawn(async move {
+    recording::start_recording(state_lock).await;
+  });
 
   video_path
 }

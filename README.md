@@ -8,7 +8,7 @@ During virtual lessons and live presentations, I constantly found myself missing
 
 It initially seemed like an impossible idea; either you somehow knew beforehand the time you wanted to record, or you would record the whole lesson and cut out the part you wanted to keep afterwards. Of course, the former idea was inapplicable for most situations, but what about the latter? What if you didn’t need to record the **whole** lesson, but just the last, say, five minutes of it?
 
-I tried searching for an existing solution, but the only similar idea I could find was something called background recording in the Xbox Game Bar. Unfortunately, it only worked on Windows (which made it useless to me since I use Linux) and it didn’t seem tailored to my use-case. Thus, having left empty after scouring the internet, I decided to make my own.
+I tried searching for an existing solution, but the only similar idea I could find was something called background recording in the Xbox Game Bar. Unfortunately, it only worked on Windows (which made it useless to me since I use Linux) and it didn’t seem tailored to my use case. Thus, having left empty after scouring the internet, I decided to make my own.
 
 Introducing Kapt, a combination of the words Kept + Capture.
 

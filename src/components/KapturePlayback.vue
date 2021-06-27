@@ -2,7 +2,7 @@
   <div v-if="objectUrl !== null">
     <div class="text-xl font-bold mt-6">Latest Kapture</div>
 
-    <video class="max-w-6xl" controls :src="objectUrl"></video>
+    <video class="max-w-6xl" controls :src="state.kaptureObjectUrl"></video>
   </div>
 </template>
 
@@ -13,7 +13,7 @@ import { state } from './state';
 export default defineComponent({
   setup() {
     return {
-      objectUrl: state.kaptureObjectUrl,
+      state,
     };
   },
 });

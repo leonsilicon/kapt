@@ -1,3 +1,4 @@
+use std::collections::VecDeque;
 use std::fs;
 use std::path::Path;
 use std::process::Command;
@@ -46,6 +47,8 @@ pub async fn process_kapture(state_lock: &'static RwLock<KaptState>, timestamp: 
     // Sort the recordings by audio_start_time
     state
       .recordings
+      .iter()
+      .collect::<Vec<_>>()
       .sort_by(|r1, r2| r1.audio_start_time.cmp(&r2.audio_start_time));
 
     println!("Sorted Recordings: {:?}", state.recordings);
@@ -362,7 +365,7 @@ pub async fn process_kapture(state_lock: &'static RwLock<KaptState>, timestamp: 
   };
 
   // Clear recordings now that we've processed it
-  state.recordings = vec![];
+  state.recordings = VecDeque::new();
 
   // Reactivate the recording so that the user can make more kaptures
   tauri::async_runtime::spawn(async move {

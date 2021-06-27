@@ -3,6 +3,7 @@ use crate::state::FfmpegActiveRecording;
 use crate::state::KaptState;
 use crate::utils::create_temp_path;
 use nanoid::nanoid;
+use std::collections::VecDeque;
 use std::sync::RwLock;
 use tauri::api::process::Command;
 
@@ -102,6 +103,7 @@ pub async fn start_recording(state_lock: &'static RwLock<KaptState>) {
 
     if state.is_recording() {
       println!("Recording has already been started.");
+      return;
     }
   }
 
@@ -165,7 +167,7 @@ pub async fn deactivate_kapt(state_lock: &'static RwLock<KaptState>) {
   stop_recording(state_lock).await;
 
   let mut state = state_lock.write().expect("Failed to acquire write lock");
-  state.recordings = vec![];
+  state.recordings = VecDeque::new();
   state.recording_session_id = None;
   state.active_recordings = [None, None];
 }

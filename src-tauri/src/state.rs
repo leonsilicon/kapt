@@ -1,3 +1,4 @@
+use std::collections::VecDeque;
 use std::sync::RwLock;
 use tokio::sync::mpsc::Receiver;
 
@@ -11,7 +12,7 @@ pub struct KaptState {
   pub recording_session_id: Option<String>,
 
   // A map from a session ID to a Vec of FfmpegRecordings
-  pub recordings: Vec<FfmpegRecording>,
+  pub recordings: VecDeque<FfmpegRecording>,
 
   // The currently selected audio source for recording
   pub audio_source: usize,
@@ -30,7 +31,7 @@ impl KaptState {
     Self {
       active_recordings: [None, None],
       recording_session_id: None,
-      recordings: vec![],
+      recordings: VecDeque::new(),
       audio_source: 0,
       video_folder: None,
       seconds_to_capture: 15,
@@ -142,7 +143,7 @@ impl FfmpegActiveRecording {
 
     println!("Recording: {:?}", recording);
 
-    state.recordings.push(recording);
+    state.recordings.push_back(recording);
   }
 }
 

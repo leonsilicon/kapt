@@ -25,6 +25,7 @@ lazy_static = "1.4.0"
 tokio = { version = "1.7.1", features = ["time", "process"] }
 regex = "1.5.4"
 log = "0.4.14"
+chrono = "0.4"
 
 [features]
 default = [ "custom-protocol" ]

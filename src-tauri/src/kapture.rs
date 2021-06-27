@@ -7,6 +7,7 @@ use std::sync::RwLock;
 use crate::recording;
 use crate::state::KaptState;
 use crate::utils::create_temp_path;
+use crate::utils::get_file_date_string;
 use nanoid::nanoid;
 
 pub fn time_to_string(time: u128) -> String {
@@ -314,8 +315,9 @@ pub async fn process_kapture(
       .as_ref()
       .expect("Video folder not provided.");
 
+    let file_date_string = get_file_date_string();
     let final_video_path = Path::new(video_dir_path)
-      .join(format!("{}.mp4", nanoid!()))
+      .join(format!("Kapt-{}-{}.mp4", file_date_string, nanoid!(4)))
       .to_string_lossy()
       .to_string();
 

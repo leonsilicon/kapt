@@ -1,15 +1,23 @@
 <template>
-  <RecordingOptions msg="Hello Vue 3 + TypeScript + Vite" />
+  <div class="flex flex-col items-stretch">
+    <RecordingActions class="mt-8" />
+    <RecordingOptions />
+    <KapturePlayback />
+  </div>
 </template>
 
 <script lang="ts">
 import { defineComponent } from 'vue';
-import RecordingOptions from './components/RecordingOptions.vue';
+import RecordingOptions from './components/RecordingSettings.vue';
+import RecordingActions from './components/RecordingActions.vue';
+import KapturePlayback from './components/KapturePlayback.vue';
 
 export default defineComponent({
   name: 'App',
   components: {
+    RecordingActions,
     RecordingOptions,
+    KapturePlayback,
   },
 });
 </script>
@@ -21,7 +29,6 @@ export default defineComponent({
   -moz-osx-font-smoothing: grayscale;
   text-align: center;
   color: #2c3e50;
-  margin-top: 60px;
 }
 
 * {

@@ -149,8 +149,8 @@ pub async fn activate_kapt(state_lock: &'static RwLock<KaptState>) {
 
   tauri::async_runtime::spawn(async move {
     loop {
-      // Spawn a recording chunk for 15 seconds in the future
-      sleep(Duration::from_secs(15)).await;
+      // Spawn a recording chunk for 5 seconds in the future
+      sleep(Duration::from_secs(5)).await;
       recording_index = if recording_index == 0 { 1 } else { 0 };
       // Check if the session ID is most recent
       let current_recording_session_id = {

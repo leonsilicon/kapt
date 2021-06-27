@@ -19,7 +19,7 @@ pub struct KaptState {
 
   pub video_folder: Option<String>,
 
-  pub seconds_to_capture: u32,
+  pub max_seconds_history: u32,
 }
 
 impl KaptState {
@@ -34,7 +34,8 @@ impl KaptState {
       recordings: VecDeque::new(),
       audio_source: 0,
       video_folder: None,
-      seconds_to_capture: 15,
+      // 5 minutes
+      max_seconds_history: 5 * 300,
     }
   }
 }
@@ -53,8 +54,7 @@ pub struct FfmpegActiveRecording {
 
 use lazy_static::lazy_static;
 
-use std::time::SystemTime;
-use std::time::UNIX_EPOCH;
+use crate::utils::get_current_time;
 
 impl FfmpegActiveRecording {
   // Wait until the commands
@@ -123,11 +123,7 @@ impl FfmpegActiveRecording {
     }
 
     // Ffmpeg process ended
-    let early_end_time = SystemTime::now()
-      .duration_since(UNIX_EPOCH)
-      .expect("Time went backwards")
-      .as_millis();
-    //
+    let early_end_time = get_current_time();
 
     let mut state = state_lock
       .write()

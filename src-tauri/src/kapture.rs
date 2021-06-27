@@ -25,8 +25,6 @@ pub fn time_to_string(time: u128) -> String {
     hours, minutes, seconds, milliseconds
   );
 
-  println!("time: {}, time string: {}", time, time_string);
-
   time_string
 }
 
@@ -35,7 +33,11 @@ pub fn time_to_string(time: u128) -> String {
 // S_i = Start time of R_i recording
 // E_i = End time of R_i
 // Returns path of the final recording
-pub async fn process_kapture(state_lock: &'static RwLock<KaptState>, timestamp: u128) -> String {
+pub async fn process_kapture(
+  state_lock: &'static RwLock<KaptState>,
+  timestamp: u128,
+  seconds_to_capture: u32,
+) -> String {
   // Stop the recording first
   recording::stop_recording(state_lock).await;
 
@@ -231,7 +233,7 @@ pub async fn process_kapture(state_lock: &'static RwLock<KaptState>, timestamp: 
         }
       }
 
-      let seconds_to_capture = state.seconds_to_capture as u128;
+      let seconds_to_capture = seconds_to_capture as u128;
 
       // 15 seconds hardcoded for now
       if total_time_ms >= seconds_to_capture * 1000 {
@@ -376,8 +378,12 @@ pub async fn process_kapture(state_lock: &'static RwLock<KaptState>, timestamp: 
 }
 
 // timestamp - Unix timestamp of when the user pressed the Kapture button (in seconds)
-pub async fn create_kapture(state_lock: &'static RwLock<KaptState>, timestamp: u128) -> String {
-  let kapture_path = process_kapture(state_lock, timestamp).await;
+pub async fn create_kapture(
+  state_lock: &'static RwLock<KaptState>,
+  timestamp: u128,
+  seconds_to_capture: u32,
+) -> String {
+  let kapture_path = process_kapture(state_lock, timestamp, seconds_to_capture).await;
 
   kapture_path
 }

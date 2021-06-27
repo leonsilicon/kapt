@@ -29,8 +29,8 @@ async fn activate_kapt() {
 
 #[tauri::command]
 // timestamp - Unix timestamp of when the user pressed the Kapture button (in seconds)
-async fn create_kapture(timestamp: i64) -> String {
-  kapture::create_kapture(&*KAPT_STATE, timestamp as u128).await
+async fn create_kapture(timestamp: i64, seconds_to_capture: i64) -> String {
+  kapture::create_kapture(&*KAPT_STATE, timestamp as u128, seconds_to_capture as u32).await
 }
 
 #[tauri::command]
@@ -58,9 +58,9 @@ fn select_video_folder() -> Option<PathBuf> {
 }
 
 #[tauri::command]
-fn set_seconds_to_capture(seconds: u32) {
+fn set_max_seconds_history(seconds: u32) {
   let mut state = &mut *KAPT_STATE.write().expect("Failed to get write lock");
-  state.seconds_to_capture = seconds;
+  state.max_seconds_history = seconds;
 }
 
 fn main() {
@@ -74,7 +74,7 @@ fn main() {
       set_audio_source,
       select_video_folder,
       set_video_folder,
-      set_seconds_to_capture
+      set_max_seconds_history
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");

@@ -2,6 +2,7 @@ use crate::recording;
 use crate::state::FfmpegActiveRecording;
 use crate::state::KaptState;
 use crate::utils::create_temp_path;
+use crate::utils::get_current_time;
 use nanoid::nanoid;
 use std::collections::VecDeque;
 use std::sync::RwLock;
@@ -38,6 +39,32 @@ pub async fn start_recording_chunk(state_lock: &'static RwLock<KaptState>, recor
   // If the current recording index is taken, stop it
   if is_chunk_active {
     stop_recording_chunk(state_lock, recording_index).await;
+  }
+
+  {
+    // Check if the oldest recording chunk has an early end time that's less than the max minute history,
+    // and remove it if so
+    let is_oldest_chunk_expired = {
+      let state = state_lock
+        .read()
+        .expect("Failed to acquire state read lock");
+
+      let oldest_chunk = state.recordings.back();
+
+      if let Some(oldest_chunk) = oldest_chunk {
+        get_current_time() - oldest_chunk.early_end_time > state.max_seconds_history as u128
+      } else {
+        false
+      }
+    };
+
+    if is_oldest_chunk_expired {
+      let mut state = state_lock
+        .write()
+        .expect("Failed to acquire state read lock");
+
+      state.recordings.pop_front();
+    }
   }
 
   let video_path = create_temp_path(&format!("{}.mp4", nanoid!()));
@@ -120,10 +147,10 @@ pub async fn start_recording(state_lock: &'static RwLock<KaptState>) {
   recording::start_recording_chunk(state_lock, recording_index).await;
   use tokio::time::{sleep, Duration};
 
-  // Spawn a recording chunk for 5 seconds in the future
   tauri::async_runtime::spawn(async move {
     loop {
-      sleep(Duration::from_secs(5)).await;
+      // Spawn a recording chunk for 15 seconds in the future
+      sleep(Duration::from_secs(15)).await;
       recording_index = if recording_index == 0 { 1 } else { 0 };
       // Check if the session ID is most recent
       let current_recording_session_id = {

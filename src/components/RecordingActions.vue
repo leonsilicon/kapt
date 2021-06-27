@@ -12,9 +12,27 @@
         Deactivate Kapt
       </button>
     </div>
-    <button v-if="isKaptActivated" class="bg-blue-400 p-2 rounded-lg" @click="createKapture">
-      Create Kapture
-    </button>
+    <div v-if="isKaptActivated" class="border-2 rounded-lg px-4">
+      <div class="text-xl font-bold mt-8">Create Kapture</div>
+      <div class="flex flex-row">
+        <button
+          class="bg-blue-400 rounded-full w-8 h-8 mx-2"
+          v-for="seconds in secondsOptions"
+          :key="seconds"
+          @mouseover="activeSeconds = seconds"
+          @mouseleave="activeSeconds = null"
+          @click="createKapture(seconds)"
+        >
+          {{ seconds }}
+        </button>
+      </div>
+      <div
+        class="text-sm my-2"
+        :style="{ visibility: activeSeconds === null ? 'hidden' : 'visible' }"
+      >
+        Capture the last {{ activeSeconds }} seconds
+      </div>
+    </div>
   </div>
 </template>
 
@@ -24,9 +42,12 @@ import { invoke } from '@tauri-apps/api/tauri';
 import { readBinaryFile } from '@tauri-apps/api/fs';
 import { state } from './state';
 
+const secondsOptions = [5, 10, 15, 30, 60];
+
 export default defineComponent({
   setup() {
     const isKaptActivated = ref(false);
+    const activeSeconds = ref(null);
 
     async function activateKapt() {
       isKaptActivated.value = true;
@@ -38,9 +59,10 @@ export default defineComponent({
       isKaptActivated.value = false;
     }
 
-    async function createKapture() {
+    async function createKapture(seconds: number) {
       const kapturePath: string = await invoke('create_kapture', {
         timestamp: new Date().getTime(),
+        secondsToCapture: seconds,
       });
       readBinaryFile(kapturePath).then((video) => {
         const intArray = new Uint8Array(video);
@@ -49,6 +71,7 @@ export default defineComponent({
             type: 'video/mp4',
           })
         );
+				console.log(objectUrl)
         state.kaptureObjectUrl = objectUrl;
       });
     }
@@ -58,6 +81,8 @@ export default defineComponent({
       isKaptActivated,
       activateKapt,
       deactivateKapt,
+      secondsOptions,
+      activeSeconds,
     };
   },
 });

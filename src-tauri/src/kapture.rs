@@ -39,7 +39,7 @@ pub async fn process_kapture(
   seconds_to_capture: u32,
 ) -> String {
   // Stop the recording first
-  recording::stop_recording(state_lock).await;
+  recording::deactivate_kapt(state_lock).await;
 
   {
     let mut state = state_lock
@@ -371,7 +371,7 @@ pub async fn process_kapture(
 
   // Reactivate the recording so that the user can make more kaptures
   tauri::async_runtime::spawn(async move {
-    recording::start_recording(state_lock).await;
+    recording::activate_kapt(state_lock).await;
   });
 
   video_path

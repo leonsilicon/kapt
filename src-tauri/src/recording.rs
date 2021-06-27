@@ -52,7 +52,7 @@ pub async fn start_recording_chunk(state_lock: &'static RwLock<KaptState>, recor
       let oldest_chunk = state.recordings.back();
 
       if let Some(oldest_chunk) = oldest_chunk {
-        get_current_time() - oldest_chunk.early_end_time > state.max_seconds_history as u128
+        get_current_time() - oldest_chunk.early_end_time > state.max_seconds_cached as u128
       } else {
         false
       }
@@ -124,12 +124,12 @@ pub async fn start_recording_chunk(state_lock: &'static RwLock<KaptState>, recor
   };
 }
 
-pub async fn start_recording(state_lock: &'static RwLock<KaptState>) {
+pub async fn activate_kapt(state_lock: &'static RwLock<KaptState>) {
   {
     let state = state_lock.read().expect("Failed to acquire write lock");
 
-    if state.is_recording() {
-      println!("Recording has already been started.");
+    if state.is_active() {
+      println!("Kapt has already been activated.");
       return;
     }
   }
@@ -170,12 +170,12 @@ pub async fn start_recording(state_lock: &'static RwLock<KaptState>) {
   });
 }
 
-pub async fn stop_recording(state_lock: &'static RwLock<KaptState>) {
+pub async fn deactivate_kapt(state_lock: &'static RwLock<KaptState>) {
   {
     let state = state_lock.read().expect("Failed to acquire write lock");
 
-    if !state.is_recording() {
-      println!("There is no recording in process.");
+    if !state.is_active() {
+      println!("Kapt isn't currently active.");
       return;
     }
   }
@@ -188,10 +188,6 @@ pub async fn stop_recording(state_lock: &'static RwLock<KaptState>) {
   println!("Stopping the recording...");
   recording::stop_recording_chunk(state_lock, 0).await;
   recording::stop_recording_chunk(state_lock, 1).await;
-}
-
-pub async fn deactivate_kapt(state_lock: &'static RwLock<KaptState>) {
-  stop_recording(state_lock).await;
 
   let mut state = state_lock.write().expect("Failed to acquire write lock");
   state.recordings = VecDeque::new();

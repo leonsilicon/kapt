@@ -19,11 +19,11 @@ pub struct KaptState {
 
   pub video_folder: Option<String>,
 
-  pub max_seconds_history: u32,
+  pub max_seconds_cached: u32,
 }
 
 impl KaptState {
-  pub fn is_recording(&self) -> bool {
+  pub fn is_active(&self) -> bool {
     self.active_recordings[0].is_some() || self.active_recordings[1].is_some()
   }
 
@@ -35,7 +35,7 @@ impl KaptState {
       audio_source: 0,
       video_folder: None,
       // 5 minutes
-      max_seconds_history: 5 * 300,
+      max_seconds_cached: 5 * 300,
     }
   }
 }

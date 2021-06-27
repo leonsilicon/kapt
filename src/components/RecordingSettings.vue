@@ -3,14 +3,14 @@
     <div class="text-2xl font-bold">Settings</div>
     <div class="max-w-5xl w-full flex flex-col items-center px-8">
       <div>
-        Capture the last
+        Keep a maximum of
         <input
-          v-model="secondsToCapture"
+          v-model="maxSecondsCached"
           type="number"
           class="pl-2 w-14 border"
-          @change="setSecondsToCapture"
+          @change="setMaxSecondsCached"
         />
-        seconds
+        seconds cached
       </div>
 
       <div class="flex flex-row mt-2 items-center">
@@ -88,10 +88,10 @@ export default defineComponent({
       }
     }
 
-    const secondsToCapture = ref(15);
-    async function setSecondsToCapture() {
-      await invoke('set_seconds_to_capture', {
-        seconds: secondsToCapture.value,
+    const maxSecondsCached = ref(300);
+    async function setMaxSecondsCached() {
+      await invoke('set_max_seconds_cached', {
+        seconds: maxSecondsCached.value,
       });
     }
 
@@ -101,8 +101,8 @@ export default defineComponent({
       audioSources,
       selectedAudioSource,
       setAudioSource,
-      secondsToCapture,
-      setSecondsToCapture,
+      maxSecondsCached,
+      setMaxSecondsCached,
     };
   },
 });

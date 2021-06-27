@@ -24,7 +24,7 @@ async fn deactivate_kapt() {
 
 #[tauri::command]
 async fn activate_kapt() {
-  recording::start_recording(&*KAPT_STATE).await;
+  recording::activate_kapt(&*KAPT_STATE).await;
 }
 
 #[tauri::command]
@@ -58,13 +58,61 @@ fn select_video_folder() -> Option<PathBuf> {
 }
 
 #[tauri::command]
-fn set_max_seconds_history(seconds: u32) {
+fn set_max_seconds_cached(seconds: u32) {
   let mut state = &mut *KAPT_STATE.write().expect("Failed to get write lock");
-  state.max_seconds_history = seconds;
+  state.max_seconds_cached = seconds;
+}
+
+use tauri::{CustomMenuItem, SystemTray, SystemTrayEvent, SystemTrayMenu, SystemTrayMenuItem};
+fn create_system_tray() -> SystemTray<String> {
+  let toggle_activate = CustomMenuItem::new("toggle_activate".to_string(), "Activate");
+  let quit = CustomMenuItem::new("quit".to_string(), "Quit");
+
+  let tray_menu = SystemTrayMenu::new()
+    .add_item(toggle_activate)
+    .add_native_item(SystemTrayMenuItem::Separator)
+    .add_item(quit);
+
+  SystemTray::new().with_menu(tray_menu)
 }
 
 fn main() {
+  let system_tray = create_system_tray();
+
   tauri::Builder::default()
+    .system_tray(system_tray)
+    .on_system_tray_event(|app, event| match event {
+      SystemTrayEvent::MenuItemClick { id, .. } => {
+        let item_handle = app.tray_handle().get_item(&id);
+
+        match id.as_str() {
+          "toggle_activate" => {
+            let state = &*KAPT_STATE.read().expect("Failed to get read lock");
+
+            // If Kapt is active, deactivate it
+            if state.is_active() {
+              tauri::async_runtime::spawn(async {
+                recording::deactivate_kapt(&*KAPT_STATE).await;
+              });
+
+              item_handle
+                .set_title("Activate")
+                .expect("Failed to set menu title");
+            } else {
+              tauri::async_runtime::spawn(async {
+                recording::activate_kapt(&*KAPT_STATE).await;
+              });
+
+              item_handle
+                .set_title("Deactivate")
+                .expect("Failed to set menu title");
+            }
+          }
+          _ => {}
+        }
+      }
+      _ => {}
+    })
     .manage(&*KAPT_STATE)
     .invoke_handler(tauri::generate_handler![
       activate_kapt,
@@ -74,7 +122,7 @@ fn main() {
       set_audio_source,
       select_video_folder,
       set_video_folder,
-      set_max_seconds_history
+      set_max_seconds_cached
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");

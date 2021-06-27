@@ -336,6 +336,10 @@ pub async fn process_kapture(
       .wait()
       .expect("failed to wait for concat");
 
+    if let Err(e) = fs::remove_file(&temp_video_list_path) {
+      log::error!("{}", e);
+    }
+
     println!("Final video path: {:?}", final_video_path);
 
     final_video_path

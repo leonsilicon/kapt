@@ -1,20 +1,22 @@
 # Kapt
 
-![Kapt Logo](https://drive.google.com/uc?export=view&id=1yaVpqhqi91ULLpnNbMWA9FFzK4PVY_3C)
+![Kapt Logo](https://i.ibb.co/M7kRbnP/logo.png)
 
 ## Inspiration
 
-During virtual lessons and live presentations, I constantly found myself missing something important the teacher/speaker would say, whether it was because of a distraction, or whether it was because I needed to leave my screen for a while (e.g. using the washroom). I didn't want to interrupt the class and ask the teacher to repeat what they said, nor did I want to browse through hours of recorded footage (if I was lucky to have a teacher who recorded their lessons) to find that one segment that I missed. It initially seemed as if those were the only solutions to the problem, but taking into account the principle of ingenuity, I asked myself: "what if you could capture a recording of the past?"
+During virtual lessons and live presentations, I constantly found myself missing something important the teacher/speaker would say, whether it was because of a distraction, or whether it was because I needed to leave my screen for a while (e.g. using the washroom). I didn't want to interrupt the class and ask the teacher to repeat what they said, nor did I want to browse through hours of recorded footage—if I was lucky to have a teacher who recorded their lessons—to find that one segment that I missed. It initially seemed as if those were the only solutions to the problem, but taking into account the principle of ingenuity, I asked myself: "what if you could capture a recording of the past?"
 
 It initially seemed like an impossible idea; either you somehow knew beforehand the time you wanted to record, or you would record the whole lesson and cut out the part you wanted to keep afterwards. Of course, the former idea was inapplicable for most situations, but what about the latter? What if you didn’t need to record the **whole** lesson, but just the last, say, five minutes of it?
 
-I tried searching for an existing solution, but the only similar idea I could find was something called background recording in the Xbox Game Bar. Unfortunately, it only worked on Windows (I use Linux), and it didn’t seem tailored to my use-case. Thus, having left empty after scouring the internet, I decided to make my own.
+I tried searching for an existing solution, but the only similar idea I could find was something called background recording in the Xbox Game Bar. Unfortunately, it only worked on Windows (which made it useless to me since I use Linux) and it didn’t seem tailored to my use-case. Thus, having left empty after scouring the internet, I decided to make my own.
 
 Introducing Kapt, a combination of the words Kept + Capture.
 
 ## What it does
 
-Kapt is a screen recording tool that allows you to capture recordings from the past. It’s a desktop app that you install on your machine, which comes as both a window and as a desktop tray icon.
+Kapt is a screen recording tool that allows you to capture recordings from the past. It’s a desktop app that you install on your computer, which comes as both a window and as a desktop tray icon.
+
+**Note:** In Kapt, a **kapture** is defined as a recording which ends at the time you make the capture (a term I made up).
 
 In the Kapt window, you can take the following actions:
 
@@ -22,7 +24,7 @@ In the Kapt window, you can take the following actions:
 - Change the audio capture device (usually you want it set to your computer audio)
 - Change the maximum cached minutes (the maximum amount of minutes in recording chunks Kapt will keep cached)
 - Change the videos path (the path where the Kaptures will be stored)
-- Viewing the latest Kapture (which will appear when you make a capture)
+- Viewing the latest Kapture (which will appear when you make a Kapture)
 
 Once you activate Kapt, you will see a box with 5 buttons, each with a number on it. The number represents the amount of seconds in history to start recording from (e.g. if you pressed the button 5, Kapt will make a Kapture that starts 5 seconds before you pressed the button). Once you make a Kapture, it will be saved to the videos folder you specified and you will also be able to view it within the app.
 
@@ -32,11 +34,15 @@ Kapt also provides the system tray, which is a more out-of-your-face way to make
 
 Kapt is able to keep a “continuous recording” by recording in *chunks*, which are small clips that get concatenated into one whole clip when the user requests a Kapture (the term I use for Kapt’s special kind of recording).
 
-![Diagram of how Kapt is able to continuously record without taking up a ton of storage space](https://drive.google.com/uc?export=view&id=1k-GubmCBhuSb4YDy7eO1sAuQJZG6zas4)
+![Diagram of how Kapt is able to continuously record without taking up a ton of storage space](https://i.ibb.co/1TbmQDs/kapt-workings.jpg)
 
 Kapt keeps 2 sets of recordings, each set containing an audio recording and a video recording. The recordings are represented by the bars in the diagram, with the start of the bar representing the start time of the recording, and the end time representing the end. Each set of recordings contain the recording chunks, which are brief recordings of about 5 seconds of length each. The space between those bars is intentional, as it takes time to stop the recording and to restart it. This space brings us to why the second set of recordings, the Secondary Video + Audio, is necessary. Their clips are used to fill in the gap so that the end video is smooth with minimally noticeable cuts.
 
 You’ll also notice that the audio and video bars aren’t perfectly aligned, which is intentional. Kapt spawns two separate FFmpeg processes for recording audio and video (since I’ve found that recording both at the same time isn’t very reliable). Since it’s very hard to spawn two processes at the *exact* same time, Kapt needs to take into account the slight discrepancy between the time the two processes are spawned. You’ll also notice that the main set of recordings aren’t fully used; this is because it’s difficult to detect exactly when FFmpeg stops recording (in contrast to FFmpeg directly outputting the exact time when the recording starts). Thus, Kapt internally marks each recording as having an “early end time,” which is guaranteed to come before the actual end time of the recording (since it retrieves the “early end time” *before* stopping the recording processes).
+
+When the user requests a Kapture, Kapt goes through the recording chunks and intelligently aligns the video and the audio. It then uses FFmpeg to cut out the part each chunk it needs to create a seamless video (refer to the above diagram of Kapt's workings). After it retrieves the segments, it uses FFmpeg to concatenate all those video into one video, which it saves to the user's disk.
+
+The main benefit of recording in small chunks is that Kapt is able to discard chunks of video that came before a certain amount of time the user specifies (defaulting to 5 minutes). This makes sure that while Kapt is activated, it doesn't take up more than a *constant small amount of space*, which is important given the frequency and duration of virtual lessons and meetings.
 
 I built Kapt using [Tauri](https://tauri.com), an up-and-coming framework I’ve been interested in using for a while. Tauri enables me to create cross-platform applications that are both performant and light (in terms of storage and memory). It’s similar to Electron, but with some major differences that makes it stand out.
 

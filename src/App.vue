@@ -2,7 +2,6 @@
   <div class="flex flex-col items-stretch">
     <RecordingActions class="mt-8" />
     <RecordingOptions />
-    <KapturePlayback />
   </div>
 </template>
 
@@ -10,14 +9,12 @@
 import { defineComponent } from 'vue';
 import RecordingOptions from './components/RecordingSettings.vue';
 import RecordingActions from './components/RecordingActions.vue';
-import KapturePlayback from './components/KapturePlayback.vue';
 
 export default defineComponent({
   name: 'App',
   components: {
     RecordingActions,
     RecordingOptions,
-    KapturePlayback,
   },
 });
 </script>

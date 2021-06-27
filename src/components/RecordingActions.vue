@@ -17,7 +17,7 @@
     </button>
 
     <div class="text-xl font-bold mt-6">Latest Kapture</div>
-    <KapturePlayback v-if="latestKaptureObjectUrl !== null" :objectUrl="latestKaptureObjectUrl" />
+    <KapturePlayback v-if="latestKaptureObjectUrl !== null" :object-url="latestKaptureObjectUrl" />
   </div>
 </template>
 

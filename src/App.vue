@@ -1,7 +1,7 @@
 <template>
-  <div class="flex flex-col items-center mb-8">
-    <RecordingActions class="mt-8 mb-4" />
-    <RecordingSettings />
+  <div class="flex flex-col items-center my-8">
+    <RecordingActions />
+    <RecordingSettings class="mt-4" />
     <KapturePlayback />
   </div>
 </template>

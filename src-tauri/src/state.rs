@@ -127,7 +127,7 @@ impl FfmpegActiveRecording {
 
     let mut state = state_lock
       .write()
-      .expect("Failed to acquire state read lock");
+      .expect("Failed to acquire state write lock");
 
     let recording = FfmpegRecording {
       audio_path: self.audio_path.clone(),

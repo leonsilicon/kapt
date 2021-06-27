@@ -3,14 +3,14 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from "vue";
-import RecordingOptions from "./components/RecordingOptions.vue";
+import { defineComponent } from 'vue';
+import RecordingOptions from './components/RecordingOptions.vue';
 
 export default defineComponent({
-  name: "App",
+  name: 'App',
   components: {
-    RecordingOptions
-  }
+    RecordingOptions,
+  },
 });
 </script>
 
@@ -22,5 +22,9 @@ export default defineComponent({
   text-align: center;
   color: #2c3e50;
   margin-top: 60px;
+}
+
+* {
+  box-sizing: border-box;
 }
 </style>

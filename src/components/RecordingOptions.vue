@@ -1,26 +1,37 @@
 <template>
   <div class="flex flex-col items-center">
-    <div class="flex flex-row mb-2">
-      <button
-        v-if="!isKaptActivated"
-        class="bg-green-400 p-2 rounded-lg mr-1"
-        @click="activateKapt"
-      >
-        Activate Kapt
+    <div class="max-w-5xl w-full flex flex-col items-stretch px-8">
+      <div class="flex flex-row mb-2">
+        <button
+          v-if="!isKaptActivated"
+          class="bg-green-400 p-2 rounded-lg mr-1"
+          @click="activateKapt"
+        >
+          Activate Kapt
+        </button>
+        <button v-else class="bg-red-400 p-2 rounded-lg ml-1" @click="deactivateKapt">
+          Deactivate Kapt
+        </button>
+      </div>
+      <button v-if="isKaptActivated" class="bg-blue-400 p-2 rounded-lg" @click="createKapture">
+        Create Kapture
       </button>
-      <button v-else class="bg-red-400 p-2 rounded-lg ml-1" @click="deactivateKapt">
-        Deactivate Kapt
-      </button>
+      <div class="text-xl font-bold mt-4">Devices</div>
+      <select @change="setAudioSource" name="select" v-model="selectedAudioSource">
+        <option v-for="source in audioSources" :value="source.id" :key="source.id">
+          {{ source.description }}
+        </option>
+      </select>
+
+      <div class="flex flex-row h-7 items-stretch mt-2 w-full">
+        <input class="border rounded-md mr-2 px-2 flex-grow" readonly :value="videoFolder" />
+
+        <button class="bg-yellow-400 rounded-md px-4" @click="selectVideoFolder">
+          Select Video Folder
+        </button>
+      </div>
     </div>
-    <button v-if="isKaptActivated" class="bg-blue-400 p-2 rounded-lg" @click="createKapture">
-      Create Kapture
-    </button>
-    <div class="text-xl font-bold mt-4">Devices</div>
-    <select @change="setAudioSource" name="select" v-model="selectedAudioSource">
-      <option v-for="source in audioSources" :value="source.id" :key="source.id">
-        {{ source.description }}
-      </option>
-    </select>
+
     <div class="text-xl font-bold mt-6">Latest Kapture</div>
     <video
       class="max-w-6xl"
@@ -36,12 +47,14 @@ import { ref, defineComponent, Ref } from 'vue';
 import { invoke } from '@tauri-apps/api/tauri';
 import { listen } from '@tauri-apps/api/event';
 import { readBinaryFile } from '@tauri-apps/api/fs';
+import { homeDir, videoDir } from '@tauri-apps/api/path';
 
 export default defineComponent({
   name: 'HelloWorld',
   setup() {
     const isKaptActivated = ref(false);
     const latestKaptureObjectUrl = ref<string | null>(null);
+
     listen('message', (msg) => {
       console.log(msg);
     });
@@ -94,15 +107,46 @@ export default defineComponent({
       });
     }
 
+    const videoFolder = ref<string>('');
+
+    async function syncVideoFolder() {
+      await invoke('set_video_folder', {
+        videoFolder: videoFolder.value,
+      });
+    }
+
+    (async () => {
+      const videoDirectory = await videoDir();
+
+      if (!videoDirectory) {
+        const homeDirectory = await homeDir();
+        videoFolder.value = homeDirectory;
+      } else {
+        videoFolder.value = videoDirectory;
+      }
+
+      await syncVideoFolder();
+    })();
+
+    async function selectVideoFolder() {
+      const videoDirectory = await invoke('select_video_folder');
+      if (videoDirectory) {
+        videoFolder.value = videoDirectory as string;
+        await syncVideoFolder();
+      }
+    }
+
     return {
       isKaptActivated,
       latestKaptureObjectUrl,
+      selectVideoFolder,
       setAudioSource,
       activateKapt,
       deactivateKapt,
       createKapture,
       selectedAudioSource,
       audioSources,
+      videoFolder,
     };
   },
 });

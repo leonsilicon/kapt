@@ -1,4 +1,5 @@
 use std::fs;
+use std::path::Path;
 use std::process::Command;
 use std::sync::RwLock;
 
@@ -6,7 +7,6 @@ use crate::recording;
 use crate::state::KaptState;
 use crate::utils::create_temp_path;
 use nanoid::nanoid;
-use tauri::api::path as tauri_path;
 
 pub fn time_to_string(time: u128) -> String {
   let milliseconds = time % 1000;
@@ -302,13 +302,12 @@ pub async fn process_kapture(state_lock: &'static RwLock<KaptState>, timestamp: 
     let temp_video_list_path = create_temp_path(&format!("{}.txt", nanoid!()));
     fs::write(&temp_video_list_path, video_path_list).expect("Failed to write video list file");
 
-    let video_dir_path = if let Some(video_dir) = tauri_path::video_dir() {
-      video_dir
-    } else {
-      tauri_path::home_dir().expect("Could not get user's home directory.")
-    };
+    let video_dir_path = state
+      .video_folder
+      .as_ref()
+      .expect("Video folder not provided.");
 
-    let final_video_path = video_dir_path
+    let final_video_path = Path::new(video_dir_path)
       .join(format!("{}.mp4", nanoid!()))
       .to_string_lossy()
       .to_string();

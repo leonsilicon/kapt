@@ -15,6 +15,8 @@ pub struct KaptState {
 
   // The currently selected audio source for recording
   pub audio_source: usize,
+
+  pub video_folder: Option<String>,
 }
 
 impl KaptState {
@@ -28,6 +30,7 @@ impl KaptState {
       recording_session_id: None,
       recordings: vec![],
       audio_source: 0,
+      video_folder: None,
     }
   }
 }
@@ -155,7 +158,6 @@ impl Drop for FfmpegRecording {
   // Removing the temporary video and audio files when the recording is cleaned up
   fn drop(&mut self) {
     use std::fs;
-    /*
     if let Err(e) = fs::remove_file(&self.audio_path) {
       log::error!("{}", e);
     }
@@ -163,6 +165,5 @@ impl Drop for FfmpegRecording {
     if let Err(e) = fs::remove_file(&self.video_path) {
       log::error!("{}", e);
     }
-    */
   }
 }

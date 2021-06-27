@@ -12,7 +12,7 @@ mod utils;
 use audio::AudioSource;
 use lazy_static::lazy_static;
 use state::KaptState;
-use std::sync::RwLock;
+use std::{path::PathBuf, sync::RwLock};
 lazy_static! {
   static ref KAPT_STATE: RwLock<KaptState> = RwLock::new(KaptState::new());
 }
@@ -40,8 +40,21 @@ fn set_audio_source(audio_source: usize) {
 }
 
 #[tauri::command]
+fn set_video_folder(video_folder: String) {
+  let mut state = &mut *KAPT_STATE.write().expect("Failed to get write lock");
+  state.video_folder = Some(video_folder);
+}
+
+#[tauri::command]
 fn get_audio_sources() -> Vec<AudioSource> {
   audio::get_audio_sources()
+}
+
+#[tauri::command]
+fn select_video_folder() -> Option<PathBuf> {
+  use tauri::api::dialog::FileDialogBuilder;
+
+  FileDialogBuilder::new().pick_folder()
 }
 
 fn main() {
@@ -52,7 +65,9 @@ fn main() {
       deactivate_kapt,
       create_kapture,
       get_audio_sources,
-      set_audio_source
+      set_audio_source,
+      select_video_folder,
+      set_video_folder
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");

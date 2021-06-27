@@ -63,25 +63,51 @@ fn set_max_seconds_cached(seconds: u32) {
   state.max_seconds_cached = seconds;
 }
 
-use tauri::{CustomMenuItem, SystemTray, SystemTrayEvent, SystemTrayMenu, SystemTrayMenuItem};
-fn create_system_tray() -> SystemTray<String> {
+use tauri::{
+  CustomMenuItem, Manager, SystemTray, SystemTrayEvent, SystemTrayMenu, SystemTrayMenuItem,
+  SystemTraySubmenu,
+};
+
+use crate::utils::get_current_time;
+
+fn main() {
   let toggle_activate = CustomMenuItem::new("toggle_activate".to_string(), "Activate");
   let quit = CustomMenuItem::new("quit".to_string(), "Quit");
 
+  let seconds_options = vec![5, 10, 15, 30, 60];
+  let mut kapture_menu = SystemTrayMenu::new();
+  for seconds_option in &seconds_options {
+    let menu_item = CustomMenuItem::new(
+      format!("kapture_seconds_{}", seconds_option),
+      format!("{} Seconds", seconds_option),
+    );
+
+    kapture_menu = kapture_menu.add_item(menu_item.disabled());
+  }
+
+  let toggle_kapture_menu_activation = move |app: &tauri::AppHandle, enabled: bool| {
+    for seconds_option in &seconds_options {
+      app
+        .tray_handle()
+        .get_item(&format!("kapture_seconds_{}", seconds_option))
+        .set_enabled(enabled)
+        .expect("Failed to set enabled");
+    }
+  };
+
+  let kapture_submenu = SystemTraySubmenu::new("Kapture", kapture_menu);
+
   let tray_menu = SystemTrayMenu::new()
     .add_item(toggle_activate)
+    .add_submenu(kapture_submenu)
     .add_native_item(SystemTrayMenuItem::Separator)
     .add_item(quit);
 
-  SystemTray::new().with_menu(tray_menu)
-}
-
-fn main() {
-  let system_tray = create_system_tray();
+  let system_tray = SystemTray::new().with_menu(tray_menu);
 
   tauri::Builder::default()
     .system_tray(system_tray)
-    .on_system_tray_event(|app, event| match event {
+    .on_system_tray_event(move |app, event| match event {
       SystemTrayEvent::MenuItemClick { id, .. } => {
         let item_handle = app.tray_handle().get_item(&id);
 
@@ -95,20 +121,50 @@ fn main() {
                 recording::deactivate_kapt(&*KAPT_STATE).await;
               });
 
+              app
+                .emit_all("kapt_activation_toggled", false)
+                .expect("Failed to emit event");
+
               item_handle
                 .set_title("Activate")
                 .expect("Failed to set menu title");
+
+              toggle_kapture_menu_activation(app, false);
             } else {
               tauri::async_runtime::spawn(async {
                 recording::activate_kapt(&*KAPT_STATE).await;
               });
 
+              app
+                .emit_all("kapt_activation_toggled", true)
+                .expect("Failed to emit event");
+
               item_handle
                 .set_title("Deactivate")
                 .expect("Failed to set menu title");
+
+              toggle_kapture_menu_activation(app, true);
             }
           }
-          _ => {}
+          "quit" => {
+            std::process::exit(0);
+          }
+          id => {
+            if id.starts_with("kapture_seconds") {
+              let seconds = id
+                .replace("kapture_seconds_", "")
+                .parse::<u32>()
+                .expect("Failed to parse");
+
+              let timestamp = get_current_time();
+              let app_handle = app.clone();
+              tauri::async_runtime::spawn(async move {
+                let video_path = kapture::create_kapture(&*KAPT_STATE, timestamp, seconds).await;
+                println!("caputer created");
+                app_handle.emit_all("kapture_created", video_path).expect("Failed to emit event");
+              })
+            }
+          }
         }
       }
       _ => {}

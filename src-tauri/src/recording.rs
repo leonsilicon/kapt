@@ -170,7 +170,7 @@ pub async fn activate_kapt(state_lock: &'static RwLock<KaptState>) {
   });
 }
 
-pub async fn deactivate_kapt(state_lock: &'static RwLock<KaptState>) {
+pub async fn stop_recordings(state_lock: &'static RwLock<KaptState>) {
   {
     let state = state_lock.read().expect("Failed to acquire write lock");
 
@@ -188,6 +188,10 @@ pub async fn deactivate_kapt(state_lock: &'static RwLock<KaptState>) {
   println!("Stopping the recording...");
   recording::stop_recording_chunk(state_lock, 0).await;
   recording::stop_recording_chunk(state_lock, 1).await;
+}
+
+pub async fn deactivate_kapt(state_lock: &'static RwLock<KaptState>) {
+  stop_recordings(state_lock).await;
 
   let mut state = state_lock.write().expect("Failed to acquire write lock");
   state.recordings = VecDeque::new();

@@ -49,6 +49,7 @@
 import { defineComponent, ref } from 'vue';
 import { invoke } from '@tauri-apps/api/tauri';
 import { readBinaryFile } from '@tauri-apps/api/fs';
+import { listen } from '@tauri-apps/api/event';
 import { state } from './state';
 import LoadingSpinner from './LoadingSpinner.vue';
 
@@ -58,6 +59,10 @@ export default defineComponent({
   components: { LoadingSpinner },
   setup() {
     const isKaptActivated = ref(false);
+    listen('kapt_activation_toggled', (data) => {
+      isKaptActivated.value = data.payload as boolean;
+    });
+
     const activeSeconds = ref(null);
 
     async function activateKapt() {
@@ -70,6 +75,23 @@ export default defineComponent({
       await invoke('deactivate_kapt');
     }
 
+    async function onKaptureCreated(kapturePath: string) {
+      const videoBytes = await readBinaryFile(kapturePath);
+      const intArray = new Uint8Array(videoBytes);
+      const objectUrl = URL.createObjectURL(
+        new Blob([intArray], {
+          type: 'video/mp4',
+        })
+      );
+      state.kaptureObjectUrl = objectUrl;
+    }
+
+    listen('kapture_created', async (data) => {
+      console.log(data);
+      const kapturePath = data.payload as string;
+      await onKaptureCreated(kapturePath);
+    });
+
     const isCreateKaptureLoading = ref(false);
     async function createKapture(seconds: number) {
       try {
@@ -78,16 +100,7 @@ export default defineComponent({
           timestamp: new Date().getTime(),
           secondsToCapture: seconds,
         });
-        readBinaryFile(kapturePath).then((video) => {
-          const intArray = new Uint8Array(video);
-          const objectUrl = URL.createObjectURL(
-            new Blob([intArray], {
-              type: 'video/mp4',
-            })
-          );
-          console.log(objectUrl);
-          state.kaptureObjectUrl = objectUrl;
-        });
+        await onKaptureCreated(kapturePath);
       } finally {
         isCreateKaptureLoading.value = false;
       }

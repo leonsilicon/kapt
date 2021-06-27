@@ -39,7 +39,7 @@ pub async fn process_kapture(
   seconds_to_capture: u32,
 ) -> String {
   // Stop the recording first
-  recording::deactivate_kapt(state_lock).await;
+  recording::stop_recordings(state_lock).await;
 
   {
     let mut state = state_lock

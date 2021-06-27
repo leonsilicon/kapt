@@ -57,6 +57,12 @@ fn select_video_folder() -> Option<PathBuf> {
   FileDialogBuilder::new().pick_folder()
 }
 
+#[tauri::command]
+fn set_seconds_to_capture(seconds: u32) {
+  let mut state = &mut *KAPT_STATE.write().expect("Failed to get write lock");
+  state.seconds_to_capture = seconds;
+}
+
 fn main() {
   tauri::Builder::default()
     .manage(&*KAPT_STATE)
@@ -67,7 +73,8 @@ fn main() {
       get_audio_sources,
       set_audio_source,
       select_video_folder,
-      set_video_folder
+      set_video_folder,
+      set_seconds_to_capture
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");

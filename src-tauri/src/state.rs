@@ -17,6 +17,8 @@ pub struct KaptState {
   pub audio_source: usize,
 
   pub video_folder: Option<String>,
+
+  pub seconds_to_capture: u32,
 }
 
 impl KaptState {
@@ -31,6 +33,7 @@ impl KaptState {
       recordings: vec![],
       audio_source: 0,
       video_folder: None,
+      seconds_to_capture: 15,
     }
   }
 }

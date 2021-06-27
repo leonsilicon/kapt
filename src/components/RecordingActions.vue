@@ -15,9 +15,6 @@
     <button v-if="isKaptActivated" class="bg-blue-400 p-2 rounded-lg" @click="createKapture">
       Create Kapture
     </button>
-
-    <div class="text-xl font-bold mt-6">Latest Kapture</div>
-    <KapturePlayback v-if="latestKaptureObjectUrl !== null" :object-url="latestKaptureObjectUrl" />
   </div>
 </template>
 
@@ -25,13 +22,11 @@
 import { defineComponent, ref } from 'vue';
 import { invoke } from '@tauri-apps/api/tauri';
 import { readBinaryFile } from '@tauri-apps/api/fs';
-import KapturePlayback from './KapturePlayback.vue';
+import { state } from './state';
 
 export default defineComponent({
-  components: { KapturePlayback },
   setup() {
     const isKaptActivated = ref(false);
-    const latestKaptureObjectUrl = ref<string | null>(null);
 
     async function activateKapt() {
       isKaptActivated.value = true;
@@ -54,12 +49,11 @@ export default defineComponent({
             type: 'video/mp4',
           })
         );
-        latestKaptureObjectUrl.value = objectUrl;
+        state.kaptureObjectUrl = objectUrl;
       });
     }
 
     return {
-      latestKaptureObjectUrl,
       createKapture,
       isKaptActivated,
       activateKapt,

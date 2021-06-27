@@ -228,12 +228,14 @@ pub async fn process_kapture(state_lock: &'static RwLock<KaptState>, timestamp: 
         }
       }
 
+      let seconds_to_capture = state.seconds_to_capture as u128;
+
       // 15 seconds hardcoded for now
-      if total_time_ms >= 15 * 1000 {
+      if total_time_ms >= seconds_to_capture * 1000 {
         // Adjust the last chunk's offset
         let n = video_chunks.len();
-        video_chunks[n - 1].audio_offset += total_time_ms - 15 * 1000;
-        video_chunks[n - 1].video_offset += total_time_ms - 15 * 1000;
+        video_chunks[n - 1].audio_offset += total_time_ms - seconds_to_capture * 1000;
+        video_chunks[n - 1].video_offset += total_time_ms - seconds_to_capture * 1000;
 
         video_chunks.reverse();
         return video_chunks;

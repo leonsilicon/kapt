@@ -1,7 +1,19 @@
 <template>
   <div class="flex flex-col items-center">
+    <div class="text-2xl font-bold">Settings</div>
     <div class="max-w-5xl w-full flex flex-col items-center px-8">
-      <div class="flex flex-row mt-4 items-center">
+      <div>
+        Capture the last
+        <input
+          v-model="secondsToCapture"
+          type="number"
+          class="pl-2 w-14 border"
+          @change="setSecondsToCapture"
+        />
+        seconds
+      </div>
+
+      <div class="flex flex-row mt-2 items-center">
         <div class="text-xl font-bold mr-2 -mb-1">Audio Device</div>
         <select @change="setAudioSource" name="select" v-model="selectedAudioSource">
           <option v-for="source in audioSources" :value="source.id" :key="source.id">
@@ -76,12 +88,21 @@ export default defineComponent({
       }
     }
 
+    const secondsToCapture = ref(15);
+    async function setSecondsToCapture() {
+      await invoke('set_seconds_to_capture', {
+        seconds: secondsToCapture.value,
+      });
+    }
+
     return {
-      selectVideoFolder,
-      setAudioSource,
-      selectedAudioSource,
-      audioSources,
       videoFolder,
+      selectVideoFolder,
+      audioSources,
+      selectedAudioSource,
+      setAudioSource,
+      secondsToCapture,
+      setSecondsToCapture,
     };
   },
 });

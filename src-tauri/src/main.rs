@@ -107,67 +107,71 @@ fn main() {
 
   tauri::Builder::default()
     .system_tray(system_tray)
-    .on_system_tray_event(move |app, event| match event {
-      SystemTrayEvent::MenuItemClick { id, .. } => {
-        let item_handle = app.tray_handle().get_item(&id);
+    .on_system_tray_event(move |app, event| {
+      match event {
+        SystemTrayEvent::MenuItemClick { id, .. } => {
+          let item_handle = app.tray_handle().get_item(&id);
 
-        match id.as_str() {
-          "toggle_activate" => {
-            let state = &*KAPT_STATE.read().expect("Failed to get read lock");
+          match id.as_str() {
+            "toggle_activate" => {
+              let state = &*KAPT_STATE.read().expect("Failed to get read lock");
 
-            // If Kapt is active, deactivate it
-            if state.is_active() {
-              tauri::async_runtime::spawn(async {
-                recording::deactivate_kapt(&*KAPT_STATE).await;
-              });
+              // If Kapt is active, deactivate it
+              if state.is_active() {
+                tauri::async_runtime::spawn(async {
+                  recording::deactivate_kapt(&*KAPT_STATE).await;
+                });
 
-              app
-                .emit_all("kapt_activation_toggled", false)
-                .expect("Failed to emit event");
+                app
+                  .emit_all("kapt_activation_toggled", false)
+                  .expect("Failed to emit event");
 
-              item_handle
-                .set_title("Activate")
-                .expect("Failed to set menu title");
+                item_handle
+                  .set_title("Activate")
+                  .expect("Failed to set menu title");
 
-              toggle_kapture_menu_activation(app, false);
-            } else {
-              tauri::async_runtime::spawn(async {
-                recording::activate_kapt(&*KAPT_STATE).await;
-              });
+                toggle_kapture_menu_activation(app, false);
+              } else {
+                tauri::async_runtime::spawn(async {
+                  recording::activate_kapt(&*KAPT_STATE).await;
+                });
 
-              app
-                .emit_all("kapt_activation_toggled", true)
-                .expect("Failed to emit event");
+                app
+                  .emit_all("kapt_activation_toggled", true)
+                  .expect("Failed to emit event");
 
-              item_handle
-                .set_title("Deactivate")
-                .expect("Failed to set menu title");
+                item_handle
+                  .set_title("Deactivate")
+                  .expect("Failed to set menu title");
 
-              toggle_kapture_menu_activation(app, true);
+                toggle_kapture_menu_activation(app, true);
+              }
             }
-          }
-          "quit" => {
-            std::process::exit(0);
-          }
-          id => {
-            if id.starts_with("kapture_seconds") {
-              let seconds = id
-                .replace("kapture_seconds_", "")
-                .parse::<u32>()
-                .expect("Failed to parse");
+            "quit" => {
+              std::process::exit(0);
+            }
+            id => {
+              if id.starts_with("kapture_seconds") {
+                let seconds = id
+                  .replace("kapture_seconds_", "")
+                  .parse::<u32>()
+                  .expect("Failed to parse");
 
-              let timestamp = get_current_time();
-              let app_handle = app.clone();
-              tauri::async_runtime::spawn(async move {
-                let video_path = kapture::create_kapture(&*KAPT_STATE, timestamp, seconds).await;
-                println!("caputer created");
-                app_handle.emit_all("kapture_created", video_path).expect("Failed to emit event");
-              })
+                let timestamp = get_current_time();
+                let app_handle = app.clone();
+                tauri::async_runtime::spawn(async move {
+                  let video_path = kapture::create_kapture(&*KAPT_STATE, timestamp, seconds).await;
+                  println!("caputer created");
+                  app_handle
+                    .emit_all("kapture_created", video_path)
+                    .expect("Failed to emit event");
+                })
+              }
             }
           }
         }
+        _ => {}
       }
-      _ => {}
     })
     .manage(&*KAPT_STATE)
     .invoke_handler(tauri::generate_handler![

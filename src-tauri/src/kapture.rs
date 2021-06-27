@@ -42,34 +42,34 @@ pub async fn process_kapture(
   // Stop the recording first
   recording::stop_recordings(state_lock).await;
 
-  {
+  let sorted_recordings = {
     let mut state = state_lock
       .write()
       .expect("Failed to acquire state write lock");
 
+    let recordings = Option::take(&mut state.recordings).expect("No recordings found.");
+    state.recordings = Some(VecDeque::new());
     // Sort the recordings by audio_start_time
-    state
-      .recordings
-      .iter()
-      .collect::<Vec<_>>()
-      .sort_by(|r1, r2| r1.audio_start_time.cmp(&r2.audio_start_time));
+    let sorted_recordings = recordings;
+    let mut sorted_recordings = sorted_recordings.into_iter().collect::<Vec<_>>();
+    sorted_recordings.sort_by(|r1, r2| r1.audio_start_time.cmp(&r2.audio_start_time));
 
-    println!("Sorted Recordings: {:?}", state.recordings);
-
-    if state.recordings.len() > 2 {
+    if sorted_recordings.len() > 2 {
       // Change the early_end_time of recording `i` such that it's never larger than the audio start time of recording `i + 2`
-      for i in 0..(state.recordings.len() - 2) {
-        let next_recording_audio_start_time = state.recordings[i + 2].audio_start_time;
-        let cur_recording = &mut state.recordings[i];
+      for i in 0..(sorted_recordings.len() - 2) {
+        let next_recording_audio_start_time = sorted_recordings[i + 2].audio_start_time;
+        let cur_recording = &mut sorted_recordings[i];
 
         if cur_recording.early_end_time >= next_recording_audio_start_time {
           cur_recording.early_end_time = next_recording_audio_start_time - 1;
         }
       }
     }
-  }
 
-  let mut state = state_lock
+    sorted_recordings
+  };
+
+  let state = state_lock
     .write()
     .expect("Failed to acquire state read lock");
   #[derive(Debug)]
@@ -90,7 +90,7 @@ pub async fn process_kapture(
     let mut total_time_ms: u128 = 0;
 
     for cur_index in (0..=end_index).rev() {
-      let cur_recording = &state.recordings[cur_index];
+      let cur_recording = &sorted_recordings[cur_index];
       // If it's a main recording, time is E_i - S_i
       let is_audio_early = cur_recording.audio_start_time < cur_recording.video_start_time;
       let audio_video_discrepancy = if is_audio_early {
@@ -128,7 +128,7 @@ pub async fn process_kapture(
       }
       // If it's a secondary recording, time is S_(i+1) - E_(i-1)
       else {
-        let prev_recording = &state.recordings[cur_index - 1];
+        let prev_recording = &sorted_recordings[cur_index - 1];
         if cur_index == end_index {
           let audio_clip_time = timestamp - prev_recording.early_end_time;
           let video_clip_time = timestamp - prev_recording.early_end_time;
@@ -162,7 +162,7 @@ pub async fn process_kapture(
             })
           }
         } else {
-          let next_recording = &state.recordings[cur_index + 1];
+          let next_recording = &sorted_recordings[cur_index + 1];
           let is_next_recording_audio_early =
             next_recording.audio_start_time < next_recording.video_start_time;
 
@@ -270,7 +270,7 @@ pub async fn process_kapture(
 
       let temp_video_path = create_temp_path(&format!("{}.mp4", nanoid!()));
 
-      let clip = &state.recordings[clip_index];
+      let clip = &sorted_recordings[clip_index];
       // Combining the audio and video of the clip and making a temporary clip
       let mut command = Command::new("ffmpeg");
 
@@ -345,12 +345,12 @@ pub async fn process_kapture(
     final_video_path
   };
 
-  println!("Recordings: {:#?}", state.recordings);
+  println!("Recordings: {:#?}", sorted_recordings);
 
   // Get the most recent main recording in the array
-  let mut i = state.recordings.len() - 1;
+  let mut i = sorted_recordings.len() - 1;
 
-  while state.recordings[i].audio_start_time > timestamp {
+  while sorted_recordings[i].audio_start_time > timestamp {
     i -= 1;
   }
 
@@ -361,7 +361,7 @@ pub async fn process_kapture(
     println!("First case");
     concat_recordings(i)
   } else {
-    let recent_even_recording = &state.recordings[i - 1];
+    let recent_even_recording = &sorted_recordings[i - 1];
     // If timestamp is after the end time of the main recording, need to use it
     if timestamp > recent_even_recording.early_end_time {
       println!("Second case");
@@ -371,9 +371,6 @@ pub async fn process_kapture(
       concat_recordings(i - 1)
     }
   };
-
-  // Clear recordings now that we've processed it
-  state.recordings = VecDeque::new();
 
   // Reactivate the recording so that the user can make more kaptures
   tauri::async_runtime::spawn(async move {

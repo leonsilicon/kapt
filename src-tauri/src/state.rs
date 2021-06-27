@@ -12,7 +12,7 @@ pub struct KaptState {
   pub recording_session_id: Option<String>,
 
   // A map from a session ID to a Vec of FfmpegRecordings
-  pub recordings: VecDeque<FfmpegRecording>,
+  pub recordings: Option<VecDeque<FfmpegRecording>>,
 
   // The currently selected audio source for recording
   pub audio_source: usize,
@@ -31,7 +31,7 @@ impl KaptState {
     Self {
       active_recordings: [None, None],
       recording_session_id: None,
-      recordings: VecDeque::new(),
+      recordings: Some(VecDeque::new()),
       audio_source: 0,
       video_folder: None,
       // 5 minutes
@@ -139,7 +139,11 @@ impl FfmpegActiveRecording {
 
     println!("Recording: {:?}", recording);
 
-    state.recordings.push_back(recording);
+    state
+      .recordings
+      .as_mut()
+      .expect("Missing recordings")
+      .push_back(recording);
   }
 }
 

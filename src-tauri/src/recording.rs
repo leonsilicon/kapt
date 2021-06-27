@@ -49,7 +49,8 @@ pub async fn start_recording_chunk(state_lock: &'static RwLock<KaptState>, recor
         .read()
         .expect("Failed to acquire state read lock");
 
-      let oldest_chunk = state.recordings.back();
+      let recordings = state.recordings.as_ref().expect("Missing recordings");
+      let oldest_chunk = recordings.back();
 
       if let Some(oldest_chunk) = oldest_chunk {
         get_current_time() - oldest_chunk.early_end_time > state.max_seconds_cached as u128
@@ -63,7 +64,11 @@ pub async fn start_recording_chunk(state_lock: &'static RwLock<KaptState>, recor
         .write()
         .expect("Failed to acquire state read lock");
 
-      state.recordings.pop_front();
+      state
+        .recordings
+        .as_mut()
+        .expect("Missing recordings")
+        .pop_front();
     }
   }
 
@@ -141,6 +146,7 @@ pub async fn activate_kapt(state_lock: &'static RwLock<KaptState>) {
   {
     let mut state = state_lock.write().expect("Failed to acquire write lock");
     state.recording_session_id = Some(recording_session_id.clone());
+    state.recordings = Some(VecDeque::new());
   }
 
   let mut recording_index = 0;
@@ -194,7 +200,7 @@ pub async fn deactivate_kapt(state_lock: &'static RwLock<KaptState>) {
   stop_recordings(state_lock).await;
 
   let mut state = state_lock.write().expect("Failed to acquire write lock");
-  state.recordings = VecDeque::new();
+  state.recordings = Some(VecDeque::new());
   state.recording_session_id = None;
   state.active_recordings = [None, None];
 }

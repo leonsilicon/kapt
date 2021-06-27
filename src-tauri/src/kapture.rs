@@ -236,7 +236,7 @@ pub async fn process_kapture(
 
       let seconds_to_capture = seconds_to_capture as u128;
 
-      // 15 seconds hardcoded for now
+      // Check if the length exceeds the user's Kapture duration
       if total_time_ms >= seconds_to_capture * 1000 {
         // Adjust the last chunk's offset
         let n = video_chunks.len();
@@ -248,7 +248,7 @@ pub async fn process_kapture(
       }
     }
 
-    // The clips combined don't exceed 15 seconds
+    // The clips combined don't reach user's Kapture duration
     video_chunks.reverse();
     video_chunks
   };
